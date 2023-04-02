@@ -1,0 +1,7 @@
+{
+	"name": "DDTO+ Hud",
+	"description": "Hud created by MinecraftBoy2038. Originated from DDTO+",
+	"restart":true,
+	"runsGlobally": true,
+	"color": [255, 189, 224]
+}

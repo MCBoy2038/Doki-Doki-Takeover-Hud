@@ -1,0 +1,10 @@
+MODPACK:
+Drag the file, "DDTO Hud" to your mods folder.
+Open your application and go to the mods section.
+Find DDTO+ Hud.
+Once you find it, enable it.
+Struggling, watch this youtube video: https://www.youtube.com/watch?v=XQ6rY_51mqo
+
+Mods Folder:
+Just basically copy everything into your mods folder that you see. Pretty self explanitory, right?
+Don't drag pack while your at it.
