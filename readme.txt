@@ -15,4 +15,6 @@ NF | beihu#6113 - NPS
 Pumpsuki#4681 - Lua Notesplashes
 Jaldabo#2709 - Helped me alot with the credit script
 superpowers04#3887 - Literally redid most of the credit script
+Dsfan2#6218 - Helped with credit script (icon)
+OOF PRODUCTIONS#0001 - also tried to help
 The DDTO+ Team - Without them, this script wouldn't exist :)
