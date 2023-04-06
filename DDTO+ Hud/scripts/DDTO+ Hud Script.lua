@@ -4,6 +4,7 @@ CREDITS:
 Script Created By MinecraftBoy2038
 Graident Lua Timebar by Betopia#5677
 NPS logic made by beihu(北狐丶逐梦) https://b23.tv/gxqO0GH
+Lane Overlay by Nox#5005
 HUD Originated By DDTO+
 Please credit me if you are using this hud
 
@@ -12,6 +13,7 @@ Please credit me if you are using this hud
 -- SETTINGS --
 local judgementCounter = false -- Do you want to enable the judgement counter? [true/false]
 local npsEnabled = false -- Do you want to enable NPS? [true/false]
+local noteUnderlayValue = 0 -- Set the overlay on how transparent it is. Max 1 (Example: 0.5)
 
 -- END OF SETTINGS --
 
@@ -24,15 +26,19 @@ local npsmax = 0
 
 
 function onCreatePost()
-    -- Sets Texts Font
-    setTextFont('ddtoScore','Aller_rg.ttf')
-    setTextFont('botPlayTxt','Aller_rg.ttf')
+    -- Pixel thing
+    isPixel = getPropertyFromClass('PlayState', 'isPixelStage')
 
     -- Score Text
     makeLuaText('ddtoScore', 'Score: 0 | Breaks: 0 | Rating: ?' ,0, 0, 0)
     
     setProperty('scoreTxt.visible', false)
     setTextFont('ddtoScore','Aller_rg.ttf')
+
+    if isPixel == true then
+        setTextFont('ddtoScore','vcr.ttf')
+    end
+
     setTextBorder('ddtoScore', 2, '000000')
     setProperty('ddtoScore.y', getProperty('scoreTxt.y') + 12)
 	setProperty('ddtoScore.x', getProperty('scoreTxt.x'))
@@ -43,7 +49,7 @@ function onCreatePost()
 
     -- Judgement Counter
     if judgementCounter then
-        makeLuaText('judgementCounterTxt', '', screenWidth, 8, 0)
+        makeLuaText('judgementCounterTxt', '', screenWidth, 20, 0)
         setTextSize('judgementCounterTxt', 20)
         setTextBorder('judgementCounterTxt', 2, '000000')
         screenCenter('judgementCounterTxt', 'Y')
@@ -51,6 +57,10 @@ function onCreatePost()
         addLuaText('judgementCounterTxt')
         setObjectCamera('judgementCounterTxt', 'hud')
         setTextFont('judgementCounterTxt', 'Aller_rg.ttf')
+        
+        if isPixel == true then
+            setTextFont('judgementCounterTxt','vcr.ttf')
+        end
     end
 
     -- Graident Timebar by Betopia#5677
@@ -65,14 +75,44 @@ function onCreatePost()
 
     -- Time Text
     setProperty('timeTxt.visible', false)
-
     makeLuaText('ddtoTimeText', 'rip', 0, 0)
     setObjectCamera('ddtoTimeText', 'hud', true)
     setProperty('ddtoTimeText.alpha', 0)
     setTextSize('ddtoTimeText', 18)
     setTextFont('ddtoTimeText','Aller_rg.ttf')
+
+    if isPixel == true then
+        setTextFont('ddtoTimeText','vcr.ttf')
+    end
+
     addLuaText('ddtoTimeText', true)
     setProperty('ddtoTimeText.y', getProperty('timeBar.y')-4)
+
+end
+
+function onCreate()
+    -- Lane Overlay by Nox#5005 (edited by MinecraftBoy2038)
+    if middlescroll then
+        makeLuaSprite('laneOverlayMS', '...', 405, 0)
+        setProperty('laneOverlay.alpha', 0)
+        setProperty('laneOverlay2.alpha', 0)
+        makeGraphic('laneOverlayMS', 460, 800, '000000')
+        addLuaSprite('laneOverlayMS')
+        setProperty('laneOverlayMS.alpha', noteUnderlayValue)
+        setObjectCamera('laneOverlayMS', 'hud')
+    else
+        makeLuaSprite('laneOverlay', '...', 725, 0)
+        makeGraphic('laneOverlay', 460, 800, '000000')
+        addLuaSprite('laneOverlay')
+        setProperty('laneOverlay.alpha', noteUnderlayValue)
+        setObjectCamera('laneOverlay', 'hud')
+        makeLuaSprite('laneOverlay2', '...', 83, 0)
+        makeGraphic('laneOverlay2', 460, 800, '000000')
+        addLuaSprite('laneOverlay2')
+        setProperty('laneOverlay2.alpha', noteUnderlayValue)
+        setObjectCamera('laneOverlay2', 'hud')
+        setProperty('laneOverlayMS.alpha', 0)
+    end
 end
 
 function onUpdatePost()

@@ -16,39 +16,41 @@ local songCredits = {
         ['SONG NAME'] = {
             composer = "COMPOSER/ARTIST",
             icon = 'ICONPATH',
+            timer = Duration
             dontShow = true or false -- Toggles the credits 
         }
     --]]
+    
     -- Tutorial
-    ['Tutorial'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
+    ['Tutorial'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
     -- Week 1
-    ['Bopeebo'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Fresh'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Dadbattle'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
+    ['Bopeebo'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['Fresh'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['Dadbattle'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
     -- Week 2
-    ['Spookeez'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['South'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Monster'] = {composer = 'bassetfilms', icon = 'icons/mic', dontShow = false},
+    ['Spookeez'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['South'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['Monster'] = {composer = 'bassetfilms', icon = 'icons/pen', timer = 5, dontShow = false},
     -- Week 3
-    ['Pico'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Philly Nice'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Blammed'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
+    ['Pico'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['Philly Nice'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['Blammed'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
     -- Week 4
-    ['Satin Panties'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['High'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Milf'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
+    ['Satin Panties'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['High'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['Milf'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
     -- Week 5
-    ['Cocoa'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Eggnog'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Winter Horrorland'] = {composer = 'bassetfilms', icon = 'icons/mic', dontShow = false},
+    ['Cocoa'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['Eggnog'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['Winter Horrorland'] = {composer = 'bassetfilms', icon = 'icons/pen', timer = 5, dontShow = false},
     -- Week 6
-    ['Senpai'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Roses'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Thorns'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
+    ['Senpai'] = {composer = 'Kawaii Sprite', icon = 'icons/pen-pixel', timer = 5, dontShow = false},
+    ['Roses'] = {composer = 'Kawaii Sprite', icon = 'icons/pen-pixel', timer = 5, dontShow = false},
+    ['Thorns'] = {composer = 'Kawaii Sprite', icon = 'icons/pen-pixel', timer = 5, dontShow = false},
     -- Week 7
-    ['Ugh'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Guns'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false},
-    ['Stress'] = {composer = 'Kawaii Sprite', icon = 'icons/mic', dontShow = false}
+    ['Ugh'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['Guns'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false},
+    ['Stress'] = {composer = 'Kawaii Sprite', icon = 'icons/pen', timer = 5, dontShow = false}
 }
 
 
@@ -62,8 +64,14 @@ function onCreate()
         return
     end
 
+    -- Pixel thing
+    isPixel = getPropertyFromClass('PlayState', 'isPixelStage')
+    
     makeLuaText('song', songName, 0, 0, -100)
     setTextFont('song','riffic.ttf')
+    if isPixel == true then
+        setTextFont('song','vcr.ttf')
+    end
     setTextAlignment('song','right')
     setTextBorder('song', 1, '000000');
     setTextSize('song', 36)
@@ -75,6 +83,9 @@ function onCreate()
     if(songInfo.composer) then
         makeLuaText('artist', songInfo.composer, 0, 0, -80)
         setTextFont('artist','Aller_rg.ttf')
+        if isPixel == true then
+            setTextFont('artist','vcr.ttf')
+        end
         setTextAlignment('artist','right')
         setTextBorder('artist', 1, '000000');
         setTextSize('artist', 19)
@@ -95,7 +106,7 @@ end
 
 function onCountdownTick(counter)
     if counter == 1 then
-        runTimer('creditsWait', 5);
+        runTimer('creditsWait', songInfo.timer);
         doTweenY('songFadeInDown', 'song', 15, 0.8, linear)
         doTweenAlpha('songFadeIn', 'song', 1, 1.15, linear)
         if(songInfo.composer) then 
