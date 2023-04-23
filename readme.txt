@@ -20,4 +20,5 @@ Dsfan2#6218 - Helped with credit script (icon)
 OOF PRODUCTIONS#0001 - tried to help
 Nox#5005 - Lane Overlay
 Zaxh#9092 - His Doki Notesplash script (really thank you so much)
+Aaron - fixed character selection thing (luv u man!)
 The DDTO+ Team - Without them, this script wouldn't exist :)

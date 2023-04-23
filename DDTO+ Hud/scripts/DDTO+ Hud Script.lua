@@ -2,7 +2,7 @@
 
 CREDITS:
 Script Created By MinecraftBoy2038
-Graident Lua Timebar by Betopia#5677
+Graident Lua Timebar by Betopia#5677 (Fixed Character Change by Aaron ♡#0001, luv u)
 NPS logic made by beihu(北狐丶逐梦) https://b23.tv/gxqO0GH
 Lane Overlay by Nox#5005
 HUD Originated By DDTO+
@@ -11,9 +11,9 @@ Please credit me if you are using this hud
 ]]
 
 -- SETTINGS --
-local judgementCounter = false -- Do you want to enable the judgement counter? [true/false]
+local judgementCounter = true -- Do you want to enable the judgement counter? [true/false]
 local npsEnabled = false -- Do you want to enable NPS? [true/false]
-local noteUnderlayValue = 0 -- Set the overlay on how transparent it is. Max 1 (Example: 0.5)
+local noteUnderlayValue = 0.3 -- Set the overlay on how transparent it is. Max 1
 
 -- END OF SETTINGS --
 
@@ -30,7 +30,7 @@ function onCreatePost()
     isPixel = getPropertyFromClass('PlayState', 'isPixelStage')
 
     -- Score Text
-    makeLuaText('ddtoScore', 'Score: 0 | Breaks: 0 | Rating: ?' ,0, 0, 0)
+    makeLuaText('ddtoScore', 'Score: 0 | Breaks: 0 | Rating: ?', 0, 0, 0)
     
     setProperty('scoreTxt.visible', false)
     setTextFont('ddtoScore','Aller_rg.ttf')
@@ -195,6 +195,23 @@ function onUpdate()
 
     -- Psych Engine wants me to do this 
     setProperty('timeBarBG.color', getColorFromHex('853b52'))
+end
+
+-- Thanks Aaron for helping :grinning:
+function onEvent(eventName, value1, value2)
+    if eventName == 'Change Character' then
+        runHaxeCode([[
+            var wawa = [];
+            for (i in game.dad.healthColorArray) 
+                wawa.push(StringTools.hex(i, 2));
+
+            var wawa2 = [];
+            for (i in game.boyfriend.healthColorArray) 
+                wawa2.push(StringTools.hex(i, 2));
+            
+            game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + wawa2.join('')), Std.parseInt('0xFF' + wawa.join(''))]);
+        ]])
+    end
 end
     
 function goodNoteHit(id, noteData, noteType, isSustainNote)

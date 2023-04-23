@@ -21,6 +21,7 @@ Hey! Thanks for downloading DDTO+ Hud Script! This script was created by Minecra
 * OOF PRODUCTIONS - tried to help lol
 * Nox#5005 - Lane Overlay
 * Zaxh#9092 - His Doki Notesplash script (really thank you so much)
+* Aaaron - fixed character selection thing (luv u man!)
 
 ### Special Thanks
 * [The DDTO+ Team](https://gamebanana.com/mods/47364) - Without them, this script wouldn't exist
