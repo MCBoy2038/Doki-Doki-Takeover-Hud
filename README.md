@@ -4,14 +4,14 @@ Hey! Thanks for downloading DDTO+ Hud Script! This script was created by Minecra
 ## This script includes
 * Gradient Timebar (by Betopia#5677)
 * NPS by (NF | beihu#6113)
-* Credit Script in DDTO+
+* Credit Script and Hitsounds in DDTO+
 * Lane Overlay
 
 ## Credits
 * MinecraftBoy2038 - Script Creator
 
 ### Contributors
-
+* Zaxh#9092 - Heavily Modified this script alot (really thank you so much)
 * Betopia#5677 - Gradient Timebar
 * NF | beihu#6113 - NPS
 * Pumpsuki#4681 - Lua Notesplashes
@@ -20,7 +20,6 @@ Hey! Thanks for downloading DDTO+ Hud Script! This script was created by Minecra
 * Dsfan2#6218 - Helped with the credit script (he did the icon, i'm so happy)
 * OOF PRODUCTIONS - tried to help lol
 * Nox#5005 - Lane Overlay
-* Zaxh#9092 - His Doki Notesplash script (really thank you so much)
 * Aaaron - fixed character selection thing (luv u man!)
 
 ### Special Thanks
