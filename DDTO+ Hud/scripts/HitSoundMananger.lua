@@ -1,56 +1,64 @@
--- OPTIONS --
-local hitSound = false -- enables hitsounds [true/false]
-local judgeHitSound = false -- sound depend on [sicks, goods, bads, etc.]
-local hitSoundVolume = 0.3 -- hitsound volume (0 to 1)
+--[[
+ INSTRUCTIONS:
+  1.Do not duplicate the script(or if you wanna change the extension to anything else Ex: .hx) the script will break and the hitsound playing will be multiplied
+  2.feel free to report any bugs or feedbacks and credit the respective owners :)
+--]]
 
 -- DO NOT TOUCH --
 local noteHit = false
 
-function onCreate()
-	precacheSound('hitsound/snap')
-	precacheSound('hitsound/perfect')
-	precacheSound('hitsound/great')
-	precacheSound('hitsound/good')
-	precacheSound('hitsound/tap')
+function onCreatePost()
+   precache = getDataFromSave('ddtoOptions', 'precacheAssets')
+   hitSoundVolume = getDataFromSave('ddtoOptions', 'hitSoundVolume')
+   judgeHitSound = getDataFromSave('ddtoOptions', 'judgeHitSound')
+   hitSound = getDataFromSave('ddtoOptions', 'hitSound')
+
+   if precache then 
+     precacheSound('hitsound/snap')
+     precacheSound('hitsound/perfect')
+     precacheSound('hitsound/great')
+     precacheSound('hitsound/good')
+     precacheSound('hitsound/tap')
+   end
 end
 
 function goodNoteHit(noteID, noteData, noteType, isSustainNote)
-   rating = getPropertyFromGroup('notes', noteID, 'rating')
-    if not isSustainNote and hitSound then
-      if rating == 'sick' then
-        play('sick')
-      elseif rating == 'good' then
-        play('good')
-      elseif rating == 'bad' then
-        play('bad')
-      else
-        play()
-        end
-    end
+   daRating = getPropertyFromGroup('notes', noteID, 'rating')
+   if not isSustainNote and hitSound then
+     hitsoundPlay(daRating)
+   end
 end
 
-function play(rating)
+function onGhostTap()
+   if hitSound then
+     hitsoundPlay(daRating)
+   end
+end
+
+function hitsoundPlay(rating)
   sfx = ''
-   if (judgeHitSound) then
-    noteHit = true
-     if rating == 'sick' then
-       sfx = 'perfect'
-     elseif rating == 'good' then
-       sfx = 'great'
-     elseif rating == 'bad' then
-       sfx = 'good'
-     else
-       sfx = 'tap'
-       noteHit = false
-     end
+   if judgeHitSound then
+     noteHit = true
+       if rating == 'sick' then
+         sfx = 'perfect'
+       elseif rating == 'good' then
+         sfx = 'great'
+       elseif rating == 'bad' then
+         sfx = 'good'
+       else
+         sfx = 'tap'
+         noteHit = false
+       end
    else
-      sfx = 'snap'
+       sfx = 'snap'
    end
    playSound('hitsound/'..sfx, hitSoundVolume, sfx)
 end
 
 function onSoundFinished(tag)
   if tag == 'perfect' then
+    noteHit = false
+  elseif tag == 'great' then
     noteHit = false
   elseif tag == 'good' then
     noteHit = false

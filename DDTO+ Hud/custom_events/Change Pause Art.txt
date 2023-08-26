@@ -1,0 +1,3 @@
+Changes the custom pause art
+Value1: pause art name (Ex: fumo, monika [It must exist on the 'images/pause/'])
+leave blank for default

@@ -1,225 +1,286 @@
--- THANK YOU Jaldabo#2709 AND Dsfan2#6218 FOR HELPING ME WITH THIS
--- Some edits by superpowers04#3887
 
--- Config --
-local iconPath = 'icons/' -- Path of the icons in the 'mods/images/'
-local iconPrefix = 'icon-' -- Prefix before the credit icon name
-local ShowCredits = true -- Do you want to show the credits before a song? [true/false]
+-- Default Values --
+local defaultIcon = 'mic' -- default value for the icon
+local defaultArtist = 'Kawaii Sprite' -- default artist
+local defaultTimer = 3
+local defaultStep = {1, 5}
+local defaultBeat = {1, 2.5}
 
--- Default Config --
-local defaultShow = true -- Should the songName show even if there's none specified? [true/false]
-local defaultTimer = 4 -- Default timer before the credits fade out and with "defaultShow" is enabled
-local defaultArtist = 'Kawaii Sprite' -- Default artist name if there's no credits data
-local defaultIcon = 'pen' -- Default icon if there's no credits data
-local defaultIconPixel = 'pen-pixel' -- Default pixel icon if there's no credits data and with "isPixelStage" enabled
-
--- Song Config --
-
-local songCredits = {
+local songData = {
     --[[
-        ['SONG NAME'] = {
-            song = "Display Song Name", -- changes the song name into something here
-            composer = "COMPOSER/ARTIST",
-            icon = 'iconName', -- located on iconPath + 'icon-'
-            
-         -- OPTIONAL CHOICES --
-            showOnTimer = [true/false], -- shows the credits base on it's given timer
-            showOnStep = [true/false], -- shows the credits base on it's given step
-            showOnBeat = [true/false], -- shows the credits base on it's given beat
-            timer = timer, -- timer before the credits fade out for "showOnTimer" or "defaultShow" enabled
-            step = {start, end}, -- optional only used when "showOnStep" is enabled
-            beat = {start, end}, -- optional only used when "showOnBeat" is enabled
-            dontShow = [true/false] -- optional toggles the credits default is false
-        }
-    --]]
-    
-    -- Tutorial
-    ['Tutorial'] = {
-        composer = 'Kawaii Sprite', 
-        icon = 'mic',
-    },
-    
-    -- Week 1 [Shows on the beat/curBeat]
-    ['Bopeebo'] = {showOnBeat = true, beat = {5, 10}},
-    -- Week 2 [Shows on the step/curStep]
-    ['Spookeez'] = {showOnStep = true, step = {10, 20}},
-    -- Week 3 [Shows on the timer]
-    ['Philly Nice'] = {showOnTimer = true, timer = 9},
-    -- Week 4 [Shows different icon]
-    ['Satin Panties'] = {icon = 'file'},
-    -- Week 5 [Shows different icon and composer]
-    ['Winter Horrorland'] = {composer = 'bassetfilms', icon = 'file'},
-    -- Week 6 [Shows a different songName]
-    ['Thorns'] = {song = 'Thorns/Phase 3'},
+      ['song name from chart'] = {
+        name = 'display song name', (OPTIONAL)
+        icon = 'display icon',
+        artist = 'display artist',
+
+        -- The Way The Credits Appear/Disappear (ENABLE ONLY ONE) --
+        showTimer = true/false, -- disappears through the sepecific timer (OPTIONAL)
+        showStep = true/false, -- appear/disappears using the specific stepData set (OPTIONAL)
+        showBeat = true/false, -- appear/disappears using the specific beatData set (OPTIONAL)
+
+        -- The Data Stuff (LEAVE BLANK FOR DEFAULT) --
+        timer = 2, -- the timer till it disappears (only for 'showTimer')
+        -- you could look at the 'Chart Editor' for additional help for this one --
+        step = {2, 5}, -- the given step data (first one:appear, second:disappear)
+        beat = {1, 5}, -- the given beat data (first one:appear, second:disappear)
+
+        -- Misc. --
+        showCredit = true/false, -- should it appear? (default is true)
+      }
+    ]]
+  ['Bopeebo'] = {icon = 'pen'}, -- Different Icon
+  ['Ugh'] = {artist = 'Kawaii Sprite'} -- Different Artist
 }
+     
+local isPixel = false
+local globalAntialiasing = false
+local hasData = false
 
-function onCreatePost()
-    songInfo = songCredits[songName] or {dontShow = not defaultShow};
-    if not ShowCredits or songInfo.dontShow then 
-        close(); -- forgor if this works tbh
-        onSongStart = nil;
-        onTimerCompleted = nil;
-        return
-    end
-    -- Pixel thing
+function onCreate()
     isPixel = getPropertyFromClass('PlayState', 'isPixelStage')
+    globalAntialiasing = getPropertyFromClass('ClientPrefs', 'globalAntialiasing')
+    skipCountdown = getProperty('skipCountdown') and getProperty('startedCountdown')
+
+    song = songData[songName]
+    hasData = song ~= nil
+
+    if hasData then
+      songData = song.name ~= nil and song.name or songName
+      songIcon = song.icon ~= nil and song.icon or defaultIcon
+      songArtist = song.artist ~= nil and song.artist or defaultArtist
+
+      showTimer = song.showTimer or false
+      showStep = song.showStep or false
+      showBeat = song.showBeat or false
+
+      timerData = song.timer or defaultTimer
+      stepData = song.step or defaultStep
+      beatData = song.beat or defaultBeat
+      showData = song.showCredit or true
+    else
+      songData = songName
+      songIcon = defaultIcon
+      songArtist = defaultArtist
+
+      timerData = defaultTimer
+      stepData = defaultStep
+      beatData = defaultBeat
+    end
+
+    addMeta(songData, songIcon, songArtist)
+end
+
+function addMeta(songDisplay, songIcon, songArtist)
+    makeLuaText('metaName', '', 0, 20, 15)
+    setTextFormat('metaName', isPixel and getFont('vcr') or getFont('riffic'), 36, 'FFFFFF', 'right')
+    setTextBorder('metaName', 1, '000000')
+    setTextString('metaName', songDisplay)
+    updateHitbox('metaName')
+    setScrollFactor('metaName')
+    setObjectCamera('metaName', 'other')
+    setProperty('metaName.alpha', 0)
+    if globalAntialiasing then
+      setProperty('metaName.antialiasing', not isPixel)
+    end
+    setProperty('metaName.x', screenWidth - (getProperty('metaName.width') + 20))
+
+    createHealthIcon('metaIcon', songIcon)
+    scaleObject('metaIcon', 0.35, 0.35)
+    setProperty('metaIcon.alpha', 0)
+    setPosition('metaIcon', screenWidth - (getProperty('metaName.width')) - 65, 15 - (getProperty('metaIcon.height') / 2) + 16)
+    setObjectCamera('metaIcon', 'other')
+
+    makeLuaText('metaArtist', '', 0, 38, 38)
+    setTextFormat('metaArtist', isPixel and getFont('vcr') or getFont('aller'), 20, 'FFFFFF', 'right')
+    setTextBorder('metaArtist', 1, '000000')
+    setProperty('metaArtist.alpha', 0)
+    setTextString('metaArtist', songArtist)
+    setObjectCamera('metaArtist', 'other')
+    updateHitbox('metaArtist')
+    setScrollFactor('metaArtist')
+    if globalAntialiasing then
+      setProperty('metaArtist.antialiasing', not isPixel)
+    end
+    setPosition('metaArtist', screenWidth - (getProperty('metaArtist.width') + 20), getProperty('metaArtist.y'))
     
-    if songInfo.song == nil then
-       makeLuaText('song', songName, 0, 0, -100)
-    else
-       makeLuaText('song', songInfo.song, 0, 0, -100)
-    end
-    setTextFont('song', 'riffic.ttf')
-    setTextAlignment('song', 'right')
-    setTextBorder('song', 1, '000000');
-    setObjectCamera('song', 'other')
-    setTextSize('song', 36)
-    setProperty('song.alpha', 0)
-    addLuaText('song')
-
-    if songInfo.composer == nil then 
-       makeLuaText('artist', defaultArtist, screenWidth, 0, 38)
-    else
-       if songName == 'Epiphany' and difficulty == 1 then
-          makeLuaText('artist', songInfo.composer_encore, screenWidth, 0, 38)
-        else
-          makeLuaText('artist', songInfo.composer, screenWidth, 0, 38)
-       end
-    end
-    setTextFont('artist', 'Aller_Rg.ttf')
-    setTextAlignment('artist', 'right')
-    setTextBorder('artist', 1, '000000');
-    setTextSize('artist', 20)
-    setObjectCamera('artist', 'other')
-    setProperty('artist.alpha', 0)
-    addLuaText('artist')
-
-    precacheImage(iconAsset)
-    if songInfo.icon == nil then
-      if isPixel then    
-        iconAsset = iconPath..iconPrefix..defaultIconPixel
-       elseif not isPixel or defaultIconPixel == nil or defaultIconPixel == '' then
-        iconAsset = iconPath..iconPrefix..defaultIcon
-      end 
-     else
-        iconAsset = iconPath..iconPrefix..songInfo.icon
-    end
-    makeLuaSprite('icon', iconAsset)
-    setObjectCamera('icon', 'camHUD')
-    scaleObject('icon', 0.35, 0.35)
-    --setProperty('icon.y', 15 - (getProperty('icon.height') / 2) + 16)
-    setObjectCamera('icon', 'other')
-    setProperty('icon.alpha', 0)
-    addLuaSprite('icon')
+    addLuaText('metaName', true)
+    addLuaSprite('metaIcon', true)
+    addLuaText('metaArtist', true)
 end
 
-function onUpdate(elapsed)
-    -- THANK YOU Dsfan2 FOR HELPING
-    setProperty('artist.x', screenWidth - (getProperty('artist.width') + 20))
-    setProperty('song.x', screenWidth - (getProperty('song.width') + 16))
-    setProperty('icon.x', getProperty('song.x') - 48)
-    --setProperty('icon.y', getProperty('song.y') - 10)
-    setProperty('icon.alpha', getProperty('song.alpha'))
-    if isPixel then
-      setTextFont('artist', 'vcr.ttf')
-      setTextFont('song', 'vcr.ttf')
+function tweenIn()
+   runHaxeCode([[
+	FlxTween.tween(game.getLuaObject('metaName'), {alpha: 1, y: 20}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.3});
+	FlxTween.tween(game.getLuaObject('metaIcon'), {alpha: 1, y: 20 - (game.getLuaObject('metaIcon').height / 2) + 16}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.3});
+	FlxTween.tween(game.getLuaObject('metaArtist'), {alpha: 1, y: 58}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.4});
+   ]])
+   runTimer('creditOut', (showTimer and timerData or calcSectionLength() + 3))
+end
+
+function tweenOut()
+   runHaxeCode([[
+	FlxTween.tween(game.getLuaObject('metaName'), {alpha: 0, y: 0}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.3});
+	FlxTween.tween(game.getLuaObject('metaIcon'), {alpha: 0, y: 0 - (game.getLuaObject('metaIcon').height / 2) + 16}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.3});
+	FlxTween.tween(game.getLuaObject('metaArtist'), {alpha: 0, y: 38}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.3});
+   ]])
+   runTimer('removeTimer', 0.8)
+end
+
+function createHealthIcon(tag, icon, crop)
+    crop = crop or false
+    makeLuaSprite(tag, 'icons/icon-'..icon)
+    if crop then
+      loadGraphic(tag, 'icons/icon-'..icon, getProperty(tag..'.width') / 2, getProperty(tag..'.height'))
     end
 end
 
-function onBeatHit()
-  if not songInfo.showOnStep then
-    if songInfo.showOnBeat then
-        if curBeat == songInfo.beat[1] then
-            TweenIn()
-        elseif curBeat == songInfo.beat[2] then 
-            TweenOut()
-            end
-        end
-    end
-end 
-
-function onStepHit()
-  if not songInfo.showOnBeat then
-    if songInfo.showOnStep then
-        if curStep == songInfo.step[1] then
-            TweenIn()
-        elseif curStep == songInfo.step[2] then
-            TweenOut()
-            end
-        end
-    end
+function onTimerCompleted(tag)
+   if tag == 'creditOut' then
+     tweenOut()
+   end
+   if tag == 'removeTimer' then
+     removeLuaSprite('metaIcon')
+     removeLuaSprite('metaArtist')
+     removeLuaSprite('metaName')
+   end
 end
 
-function onCountdownTick(counter)
-  if counter == 0 then
-    if defaultShow and not songInfo.showOnStep and not songInfo.showOnBeat then
-         TweenIn()
-            if songInfo.timer == nil then
-               runTimer('creditsOut', defaultTimer)
-            else
-               runTimer('creditsOut', songInfo.timer)
-            end
+function onStartCountdown()
+  if not skipCountdown then
+    if not showStep and not showBeat then
+       tweenIn()
         end
     end
 end
 
 function onSongStart()
-  if getProperty('skipCountdown') == true then
-    if defaultShow and not songInfo.showOnStep and not songInfo.showOnBeat then
-         TweenIn()
-            if songInfo.timer == nil then
-               runTimer('creditsOut', defaultTimer)
-            else
-               runTimer('creditsOut', songInfo.timer)
-            end
+  if skipCountdown then
+    if not showStep and not showBeat then
+       tweenIn()
         end
     end
 end
 
-function onTimerCompleted(tag)
-  if defaultShow or songInfo.timer then
-    if tag == 'creditsOut' then
-      TweenOut()
+function onBeatHit()
+  if showBeat and not showStep and not showTimer then
+    if curBeat == beatData[1] then
+      tweenIn()
+    elseif curBeat == beatData[2] then 
+      tweenOut()
+        end
+    end
+end 
+
+function onStepHit()
+  if showStep and not showBeat and not showTimer then
+    if curStep == stepData[1] then
+      tweenIn()
+    elseif curStep == stepData[2] then
+      tweenOut()
         end
     end
 end
 
-function TweenIn()
-   doTweenAlpha('songAIn', 'song', 1, 0.7, 'quartInOut')
-   doTweenY('songYIn', 'song', 20, 0.7, 'quartInOut')
-
-  if luaSpriteExists('icon') then
-   doTweenAlpha('iconAIn', 'icon', 1, 0.7, 'quartInOut')
-   doTweenY('iconYIn', 'icon', 20 - (getProperty('icon.height') / 2) + 16, 0.7, 'quartInOut')
-  end
-
-  if luaTextExists('artist') then
-   doTweenAlpha('artistAIn', 'artist', 1, 0.8, 'quartInOut')
-   doTweenY('artistYIn', 'artist', 58, 0.8, 'quartInOut')
-    end
+function calcSectionLength(multiplier)
+   multiplier = multiplier or 1
+   return (stepCrochet / (64 / multiplier) / playbackRate)
 end
 
-function TweenOut()
-   doTweenAlpha('songAOut', 'song', 0, 0.7, 'quartInOut')
-   doTweenY('songYOut', 'song', 0, 0.7, 'quartInOut')
+function getFont(type)
+    font = ''
+    type = type or 'aller'
+      if type == 'aller' then
+        if language == 'ru-RU' then
+          font = 'Ubuntu-Bold.ttf'
+        elseif language == 'jp-JP' then
+          font = 'NotoSansJP-Medium.otf'
+        else
+          font = 'Aller_Rg.ttf'
+        end
 
-  if luaSpriteExists('icon') then
-   doTweenAlpha('iconAOut', 'icon', 0, 0.7, 'quartInOut')
-   doTweenY('iconYOut', 'icon', 0 - getProperty('icon.height') / 2 + 16, 0.7, 'quartInOut')
-  end
+      elseif type == 'riffic' then
+        if language == 'ru-RU' then
+          font = 'Ubuntu-Bold.ttf'
+        elseif language == 'jp-JP' then
+          font = 'NotoSansJP-Medium.otf'
+        else
+          font = 'riffic.ttf'
+        end
 
-  if luaTextExists('artist') then
-   doTweenAlpha('artistAOut', 'artist', 0, 0.7, 'quartInOut')
-   doTweenY('artistYOut', 'artist', 38, 0.7, 'quartInOut')
+      elseif type == 'halogen' then
+        if language == 'ru-RU' then
+          font = 'Ubuntu-Bold.ttf'
+        elseif language == 'jp-JP' then
+          font = 'NotoSansJP-Medium.otf'
+        else
+          font = 'Halogen.otf'
+        end
+
+      elseif type == 'grotesk' then
+        if language == 'ru-RU' then
+          font = 'Ubuntu-Bold.ttf'
+        elseif language == 'jp-JP' then
+          font = 'NotoSansJP-Medium.otf'
+        else
+          font = 'HKGrotesk-Bold.otf'
+        end
+
+      elseif type == 'pixel' then
+          font = 'LanaPixel.ttf'
+      elseif type == 'dos' then
+        if language == 'ru-RU' then
+          font = 'Ubuntu-Bold.ttf'
+        elseif language == 'jp-JP' then
+          font = 'NotoSansJP-Medium.otf'
+        else
+          font = 'Perfect DOS VGA 437 Win.ttf'
+        end
+
+      elseif type == 'vcr' then
+        if language == 'ru-RU' then
+          font = 'Ubuntu-Bold.ttf'
+        elseif language == 'jp-JP' then
+          font = 'NotoSansJP-Medium.otf'
+        else
+          font = 'vcr.ttf'
+        end
+
+      elseif type == 'waifu' then
+        if language == 'en-US' then
+          font = 'CyberpunkWaifus.ttf'
+        else
+          font = 'LanaPixel.ttf'
+        end
     end
+   return font;
 end
 
-function onTweenCompleted(tag)
-   if tag == 'songAOut' then
-    removeLuaText('song')
-   elseif tag == 'iconAOut' then
-    removeLuaSprite('icon')
-   elseif tag == 'artistAOut' then
-    removeLuaText('artist')
-    end
+function setPosition(tag, x, y)
+   x = x or getProperty(tag, 'x')
+   y = y or getProperty(tag, 'y')
+   setProperty(tag..'.x', x)
+   setProperty(tag..'.y', y)
+end
+
+function setTextFormat(tag, font, size, color, alignment)
+   setTextFont(tag, font)
+   setTextSize(tag, size)
+   setTextColor(tag, color)
+   setTextAlignment(tag, alignment)
+end
+
+function saveData(dataGrp, dataField, dataValue)
+  setDataFromSave(dataGrp, dataField, dataValue)
+end
+
+function getData(dataGrp, dataField, dataValue)
+  return getDataFromSave(dataGrp, dataField, dataValue)
+end
+
+function getOptionData(var)
+   return getData('ddtoOptions', var)
+end
+
+function setOptionData(var, val)
+   saveData('ddtoOptions', var, val)
 end

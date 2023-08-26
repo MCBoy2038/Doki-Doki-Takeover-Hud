@@ -1,697 +1,549 @@
---[[
 
-CREDITS:
-Script Created By MinecraftBoy2038
-Modified By Zaxh#9092 (Made the script more accurate from the original ddto+ source code) 
-Graident Lua Timebar by Betopia#5677 (Fixed Character Change by Aaron ♡#0001, luv u)
-PlayAsDad by Kevin Kuntz
-NPS logic made by beihu(北狐丶逐梦) https://b23.tv/gxqO0GH
-Lane overlay/underlay by Nox#5005
-HUD Originated By DDTO+
-Please credit me if you are using this hud
-
-]]
-
--- SETTINGS --
+-- HUD OPTIONS --
+local precacheAssets = true -- Preloads every images used in the scripts [true/false]
 local judgementCounter = false -- Do you want to enable the judgement counter? [true/false]
 local npsEnabled = false -- Do you want to enable NPS? (Notes per second) [true/false]
+local earlyLate = false -- Do you want enable earlyLate counter? [true/false]
+local customFeatures = false -- Do you want enable custom features (exclusive to this script only!) [true/false]
+
+-- OTHER OPTIONS --
+
 local laneUnderlay = false -- Do you want to enable the lane underlay? [true/false]
 local laneTransparency = 0.3 -- Set the underlay on how transparent it is. Max 1
 local mirrorMode = false -- Do you want to play as the opponent? [true/false]
 local coolGameplay = false -- Do you want to enable coolGameplay?? lol [true/false]
-local gfCountdown = false -- Do you want to enable gfCountdown?? [true/false] (IMPORTANT: THIS ONLY WORKS IF YOU HAVE THE GF FROM DDTO+)
+local autoPause = true -- Do you want to enable auto pause? [true/false]
+local hudWatermark = true -- Do you want to enable the HUD's watermark?? [true/false] (would recommened!!! /j)
 
-local onlyBFSongs = {'songName1', 'songName2'}
+-- PAUSE OPTIONS --
+local enableCustomPause = true -- Enables the custom pause [true/false]
+local secretPause = true -- Enables a secret pause menu style [true/false]
+local isAndroid = false -- Are you on mobile/phone?? (MUST enable customPause first) [true/false]
 
--- CODE N SUCH --
-local nps = 0
-local early = 0
-local late = 0
-local reduce = true
-local npsMax = 0
+-- SPLASH OPTIONS --
+local enableSplash = true -- Do you want to enable Splashes? [true/false]
+local enableOpponentSplash = false -- Do you want to opponent enable Splashes? [true/false]
+
+-- HITSOUND OPTIONS --
+local enableHitSound = false -- Do you want to enable hit sound? [true/false]
+local hitSoundVolume = 0.3 -- hit sound volume (NOTE: hitSound Should enabled first) [0 - 1]
+local judgeHitSound = true -- Do you want to judge hit sound? (hitSound depends on sicks, goods, bads NOTE: hitSound Should enabled first) [true/false]
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------- THE CODE ITSELF (mess if you know how things work i guess :/) ------------------------------------------------------------------------------------------------------------------------------
+
+-- HUD variables --
 local maxCombo = 0
+local earlys = 0
+local lates = 0
+
+-- Nps --
+local nps = 0
+local maxNps = 0
+local canDrain = true
+
+-- Botplay --
+local botNotes = 0
+local botHits = 0
+local botScore = 0
+local botRating = 0
 local botplaySine = 0
-local pixelShitPart1 = ''
-local pixelShitPart2 = ''
-local altSuffix = ''
-local glitchSuffix = '-glitch'
+
+local ratingStuff = {
+  doki = {
+    {'D', 0.50},
+    {'C', 0.60},
+    {'B', 0.70},
+    {'A', 0.80},
+    {'A.', 0.85},
+    {'A:', 0.90},
+    {'AA', 0.93},
+    {'AA.', 0.9650},
+    {'AA:', 0.990},
+    {'AAA', 0.9970},
+    {'AAA.', 0.9980},
+    {'AAA:', 0.9990},
+    {'AAAA', 0.99955},
+    {'AAAA.', 0.99970},
+    {'AAAA:', 0.99980},
+    {'AAAAA', 0.999935},
+  },
+  default = {},
+}
+
+local botScores = {
+   -- 1st one is the score and 2nd one is the ratingMod
+   sick = {350, 1},
+   good = {200, 0.7},
+   bad = {100, 0.4},
+   shit = {50, 0},
+}
+
+local isPixel = false
+local globalAntialiasing = false
+local comboOffset = {}
+local judgementString = ''
 
 function onCreate()
-  if judgementCounter then
-      makeLuaText('judgementCounter', '', screenWidth, 20, 0)
-      setTextSize('judgementCounter', 20)
+    addHaxeLibrary('Std')
+    addHaxeLibrary('Type')
+
+    initSaveData('ddtoOptions')
+    addOptions()
+
+    isPixel = getPropertyFromClass('PlayState', 'isPixelStage')
+    globalAntialiasing = getPropertyFromClass('ClientPrefs', 'globalAntialiasing')
+    comboOffset = getPropertyFromClass('ClientPrefs', 'comboOffset')
+    ogRatings = getPropertyFromClass('PlayState', 'ratingStuff')
+
+    if autoPause then
+      setPropertyFromClass('flixel.FlxG', 'autoPause', false)
+    else
+      setPropertyFromClass('flixel.FlxG', 'autoPause', true)
+    end
+
+    -- compat i guess
+    sicks = (version:find('0.7') and getProperty('ratingsData[0].hits') or getProperty('sicks'))
+    goods = (version:find('0.7') and getProperty('ratingsData[1].hits') or getProperty('goods'))
+    bads = (version:find('0.7') and getProperty('ratingsData[2].hits') or getProperty('bads'))
+    shits = (version:find('0.7') and getProperty('ratingsData[3].hits') or getProperty('shits'))
+
+    judgementString = 'Doki: '..sicks..'\nGood: '..goods..'\nOk: '..bads..'\nNo: '..shits..'\nMiss: '..getProperty('songMisses')..'\n'
+    setPropertyFromClass('ClientPrefs', 'timeBarType', 'Song Name') -- for now 
+
+    if buildTarget == 'android' and not isAndroid then
+      isAndroid = true
+    end
+    
+    if getOptionData('judgementCounter') then
+      makeLuaText('judgementCounter', '', 0, 20, 0)
+      setTextFormat('judgementCounter', (isPixel and getFont('vcr') or getFont('aller')), 20, 'FFFFFF', 'LEFT')
       setTextBorder('judgementCounter', 2, '000000')
       setProperty('judgementCounter.borderQuality', 2)
-      setTextFont('judgementCounter', 'Aller_Rg.ttf')
-      screenCenter('judgementCounter', 'Y')
-      setProperty('judgementCounter.y', getProperty('judgementCounter.y') - 50)
-      setTextAlignment('judgementCounter', 'left')
+      setScrollFactor('judgementCounter')
+      screenCenter('judgementCounter', 'y')
+      setProperty('judgementCounter.visible', not hideHud)
+      setProperty('judgementCounter.y', getProperty('judgementCounter.y') - 70)
+      if globalAntialiasing then
+        setProperty('judgementCounter.antialiasing', not isPixel)
+      end
       addLuaText('judgementCounter')
-  end
+    end 
 
-  if coolGameplay then
+    if getOptionData('coolGameplay') then
+      if getOptionData('precacheAssets') then precacheImage('coolgameplay') end
       makeAnimatedLuaSprite('hueh231', 'coolgameplay')
       addAnimationByPrefix('hueh231', 'idle', 'Symbol', 24, true)
       playAnim('hueh231', 'idle')
+      setProperty('hueh231.visible', not hideHud)
       setObjectCamera('hueh231', 'hud')
       addLuaSprite('hueh231', true)
-  end
-
-  if laneUnderlay then
+    end
+   
+    if getOptionData('laneUnderlay') then
       makeLuaSprite('laneunderlayOpponent', '', 70, 0)
       makeGraphic('laneunderlayOpponent', 500, screenHeight * 2, '000000')
-      setProperty('laneunderlayOpponent.alpha', laneTransparency)
+      setProperty('laneunderlayOpponent.alpha', getOptionData('laneTransparency'))
       setObjectCamera('laneunderlayOpponent', 'hud')
       screenCenter('laneunderlayOpponent', 'Y')
+      setProperty('laneunderlayOpponent.visible', not hideHud)
       addLuaSprite('laneunderlayOpponent')
 
       makeLuaSprite('laneunderlay', '', 70 + (screenWidth / 2), 0)
       makeGraphic('laneunderlay', 500, screenHeight * 2, '000000')
-      setProperty('laneunderlay.alpha', laneTransparency)
+      setProperty('laneunderlay.alpha', getOptionData('laneTransparency'))
       setObjectCamera('laneunderlay', 'hud')
       screenCenter('laneunderlay', 'Y')
+      setProperty('laneunderlay.visible', not hideHud)
       addLuaSprite('laneunderlay')
-  end
+      if middlescroll then
+        screenCenter('laneunderlay', 'X')
+        setProperty('laneunderlayOpponent.alpha', 0)
+       end
+    end
 
-   makeLuaText('practiceTxt', 'PRACTICE MODE', 0, 0)
-   setTextSize('practiceTxt', 32)
-   setTextFont('practiceTxt', 'riffic.ttf')
-   screenCenter('practiceTxt', 'X')
-   setTextAlignment('practiceTxt', 'center')
-   setProperty('practiceTxt.visible', false)
-   setTextBorder('practiceTxt', 1.25, '000000')
-   addLuaText('practiceTxt')
+    if getOptionData('hudWatermark') then
+      makeLuaText('hudWatermark', songName .. ' ['..string.upper(difficultyName)..'] - DDTO Hud v3', 0, 4, 698)
+      setTextFont('hudWatermark', (isPixel and getFont('vcr') or getFont('aller')))
+      setTextBorder('hudWatermark', 1, '000000')
+      setTextSize('hudWatermark', 15)
+      setProperty('hudWatermark.visible', not hideHud)
+      if globalAntialiasing then
+        setProperty('hudWatermark.antialiasing', not isPixel)
+      end
+      setProperty('hudWatermark.alpha', 0)
+      addLuaText('hudWatermark', true)
+    end
 
-  -- NEED HELP FOR THIS ONE LOL
+    makeLuaText('practiceTxt', 'PRACTICE MODE', 0, 0, 0)
+    setTextSize('practiceTxt', 32)
+    setTextFont('practiceTxt', (isPixel and getFont('vcr') or getFont('riffic')))
+    screenCenter('practiceTxt', 'X')
+    setTextAlignment('practiceTxt', 'center')
+    setTextBorder('practiceTxt', 1.25, '000000')
+    if globalAntialiasing then
+      setProperty('practiceTxt.antialiasing', not isPixel)
+    end
+    addLuaText('practiceTxt')
 
-   if earlyLate then
-      makeLuaText('currentTimingShown', '', 0, 0, 0)
-      setTextSize('currentTimingShown', 28)
-      setObjectCamera('currentTimingShown', '')
-      setTextBorder('currentTimingShown', 1.25, '000000')
-      setTextFont('currentTimingShown', 'riffic.ttf')
-      addLuaText('currentTimingShown')
-  end
-
-   makeLuaSprite('timeBarBack', 'timeBar')
+   makeLuaSprite('timeBarBack', 'timeBar', 0, 10)
+   if downscroll then
+     setProperty('timeBarBack.y', screenHeight * 0.9 + 40)
+   end
+   screenCenter('timeBarBack', 'X')
    setObjectCamera('timeBarBack', 'hud')
+   setProperty('timeBarBack.alpha', 0)
    addLuaSprite('timeBarBack')
-
-   makeLuaSprite('ready', pixelShitPart1..'ready'..pixelShitPart2)
-   setObjectCamera('ready', 'hud')
-   if not isPixel then
-     setGraphicSize('ready', getProperty('ready.width') * 0.6)
-    else
-     setGraphicSize('ready', getProperty('ready.width') * 6)
-   end
-   screenCenter('ready')
-   setProperty('ready.alpha', 0)
-   addLuaSprite('ready')
-
-   makeLuaSprite('set', pixelShitPart1..'set'..pixelShitPart2)
-   setObjectCamera('set', 'hud')
-   if not isPixel then
-     setGraphicSize('set', getProperty('set.width') * 0.6)
-    else
-     setGraphicSize('set', getProperty('set.width') * 6)
-   end
-   screenCenter('set')
-   setProperty('set.alpha', 0)
-   addLuaSprite('set')
-
-   makeLuaSprite('go', pixelShitPart1..'go'..pixelShitPart2)
-   setObjectCamera('go', 'hud')
-   if not isPixel then
-     setGraphicSize('go', getProperty('go.width') * 0.6)
-    else
-     setGraphicSize('go', getProperty('go.width') * 6)
-   end
-   screenCenter('go')
-   setProperty('go.alpha', 0)
-   addLuaSprite('go')
 end
 
 function onCreatePost()
-   if mirrorMode then
-     if not middlescroll then
-	for i = 0, getProperty('strumLineNotes.members.length') do
-	   local name = i >= 4 and 'Opponent' or 'Player'
-	     setProperty('strumLineNotes.members['..i..'].x', _G['default'..name..'StrumX'..i % 4])
-	     setProperty('strumLineNotes.members['..i..'].y', _G['default'..name..'StrumY'..i % 4])
-	 end
-     end
-
-     for i = 0, getProperty('unspawnNotes.length')-1 do
-        setPropertyFromGroup('unspawnNotes', i, 'noAnimation', true)
-        setPropertyFromGroup('unspawnNotes', i, 'noMissAnimation', true)
-        setPropertyFromGroup('unspawnNotes', i, 'mustPress', not getPropertyFromGroup('unspawnNotes', i, 'mustPress'))
-       end
+   for i = 1, #ogRatings do
+      table.insert(ratingStuff.default, ogRatings[i])
    end
-  isPixel = getPropertyFromClass('PlayState', 'isPixelStage')
-   changeGradientBar()
+   setPropertyFromClass('PlayState', 'ratingStuff', ratingStuff.doki)
+   reloadGradientBar()
+   runHaxeCode('game.timeBarBG.kill();')
 
-   setProperty('scoreTxt.visible', false)
+   setProperty('practiceTxt.y', getPropertyFromGroup('playerStrums', 0, 'y') + 35)
 
-   makeLuaText('ddtoScoreTxt', '')
-   setTextFont('ddtoScoreTxt', 'Aller_Rg.ttf')
-   setTextBorder('ddtoScoreTxt', 1.25, '000000')
-   setTextSize('ddtoScoreTxt', 20)
-   setProperty('ddtoScoreTxt.x', getProperty('scoreTxt.x'))
-   setProperty('ddtoScoreTxt.y', getProperty('healthBarBG.y') + 48)
-   setTextWidth('ddtoScoreTxt', getTextWidth('scoreTxt'))
-   setTextAlignment('ddtoScoreTxt', 'CENTER')
-   addLuaText('ddtoScoreTxt', true)
+   setTextFont('scoreTxt', (isPixel and getFont('vcr') or getFont('aller')))
+   setTextFont('timeTxt', (isPixel and getFont('vcr') or getFont('aller')))
+   setTextFont('botplayTxt', (isPixel and getFont('vcr') or getFont('riffic')))
 
    setTextSize('timeTxt', 18)
-   setProperty('timeTxt.y', getProperty('timeBarBG.y'))
-   setProperty('timeBarBack.x', getProperty('timeBarBG.x'))
-   setProperty('timeBarBack.y', getProperty('timeBarBG.y'))
-   setProperty('practiceTxt.y', defaultPlayerStrumY0 + 30)
-   setTextFont('botplayTxt', 'riffic.ttf')
- 
-   -- why psych's timeBarBG a mess :(
-   setObjectOrder('timeBarBack', getObjectOrder('timeBarBG') + 1)
+   setTextBorder('timeTxt', 1.2, '000000')
+   setProperty('timeTxt.y', getProperty('timeBarBack.y'))
+
+   setPosition('timeBar', getProperty('timeBarBack.x') + 4, getProperty('timeBarBack.y') + 4)
+
+   setObjectOrder('timeBarBack', getObjectOrder('timeBarBG'))
    setObjectOrder('practiceTxt', getObjectOrder('botplayTxt'))
-   setObjectOrder('timeBar', getObjectOrder('timeBarBack') + 1)
-   setObjectOrder('timeTxt', getObjectOrder('timeBar') + 1)
-   setProperty('timeBarBack.alpha', 0)
-
-   if rating == 0 then
-       if npsEnabled then
-         setProperty('scoreTxt.text', 'NPS: 0 (Max: 0) | Score: 0 | Breaks: 0 | Rating: ?')
-         setTextString('ddtoScoreTxt', 'NPS: 0 (Max: 0) | Score: 0 | Breaks: 0 | Rating: ?')
-        else
-         setProperty('scoreTxt.text', 'Score: 0 | Breaks: 0 | Rating: ?')
-         setTextString('ddtoScoreTxt', 'Score: 0 | Breaks: 0 | Rating: ?')
-       end
-   end
-
- 
-   for i = 1, #onlyBFSongs do
-      if songName == onlyBFSongs[i] and mirrorMode then
-        mirrorMode = false
-      end
-   end
+   setObjectOrder('judgementCounter', getObjectOrder('scoreTxt'))
+   setObjectOrder('hudWatermark', getObjectOrder('scoreTxt'))
 end
 
 function onCountdownTick(swagCounter)
-     if swagCounter == 0 then
-       if isPixel and curStage:lower():find('evil') then
-          setCountdown(0, 'evil')
-       elseif isPixel then
-          setCountdown(0, 'pixel')
-       else
-          setCountdown(0)
-       end
+   if not isPixel then
+     runHaxeCode([[
+        if (game.countdownReady != null && game.countdownReady.exists)
+          game.countdownReady.scale.set(0.6, 0.6);
 
-     elseif swagCounter == 1 then
-       if isPixel and curStage:lower():lower():find('evil') then
-          setCountdown(1, 'evil')
-       elseif isPixel then
-          setCountdown(1, 'pixel')
-       else
-          setCountdown(1)
-       end
+        if (game.countdownSet != null && game.countdownSet.exists)
+          game.countdownSet.scale.set(0.6, 0.6);
 
-     elseif swagCounter == 2 then 
-       if isPixel and curStage:lower():lower():find('evil') then
-          setCountdown(2, 'evil')
-       elseif isPixel then
-          setCountdown(2, 'pixel')
-       else
-          setCountdown(2)
-       end
-
-     elseif swagCounter == 3 then
-       if isPixel and curStage:lower():find('evil') then
-          setCountdown(3, 'evil')
-       elseif isPixel then
-          setCountdown(3, 'pixel')
-       else
-          setCountdown(3)
-       end
-    end
+        if (game.countdownGo != null && game.countdownGo.exists)
+          game.countdownGo.scale.set(0.6, 0.6);
+     ]])
+   end
 end
 
-function setCountdown(swagCounter, countdownStyle)
-  if swagCounter == 0 then
-     if gfCountdown and checkAnimationExists('gf', 'countdownThree') then
-         playAnim('gf', 'countdownThree')
-     end
-
-  elseif swagCounter == 1 then
-        setProperty('ready.alpha', 1)
-        doTweenAlpha('ready', 'ready', 0, crochet / 1000, 'cubeInOut')
-     if gfCountdown and checkAnimationExists('gf', 'countdownTwo') then
-         playAnim('gf', 'countdownTwo')
-     end
-
-  elseif swagCounter == 2 then
-        setProperty('set.alpha', 1)
-        doTweenAlpha('set', 'set', 0, crochet / 1000, 'cubeInOut')
-     if gfCountdown and checkAnimationExists('gf', 'countdownOne') then
-         playAnim('gf', 'countdownOne')
-     end
-
-  elseif swagCounter == 3 then
-        setProperty('go.alpha', 1)
-        doTweenAlpha('go', 'go', 0, crochet / 1000, 'cubeInOut')
-     if gfCountdown and checkAnimationExists('gf', 'countdownGo') then
-         playAnim('gf', 'countdownGo')
-     end
-  end
-
-    if countdownStyle == 'pixel' then
-      if swagCounter == 1 then
-        loadGraphic('ready', 'pixelUI/ready-pixel')
-        setGraphicSize('ready', getProperty('ready.width') * 6)
-        setProperty('ready.antialiasing', false)
-        screenCenter('ready')
-
-      elseif swagCounter == 2 then
-        loadGraphic('set', 'pixelUI/set-pixel')
-        setGraphicSize('set', getProperty('set.width') * 6)
-        setProperty('set.antialiasing', false)
-        screenCenter('set')
-
-      elseif swagCounter == 3 then
-        loadGraphic('go', 'pixelUI/date-pixel')
-        setGraphicSize('go', getProperty('go.width') * 6)
-        setProperty('go.antialiasing', false)
-        screenCenter('go')
-      end
-
-    elseif countdownStyle == 'evil' then
-       setProperty('introSoundsSuffix', '-glitch')
-      if swagCounter == 1 then
-        loadGraphic('ready', 'pixelUI/ready-pixel')
-        setGraphicSize('ready', getProperty('ready.width') * 6)
-        setProperty('ready.antialiasing', false)
-        screenCenter('ready')
-
-      elseif swagCounter == 2 then
-        loadGraphic('set', 'pixelUI/set-pixel')
-        setGraphicSize('set', getProperty('set.width') * 6)
-        setProperty('set.antialiasing', false)
-        screenCenter('set')
-
-      elseif swagCounter == 3 then
-        loadGraphic('go', 'pixelUI/demise-date')
-        setGraphicSize('go', getProperty('go.width') * 6)
-        setProperty('go.antialiasing', false)
-        screenCenter('go')
-        end
-    end
-end
-
-function onTweenCompleted(tag)
-   if tag == 'ready' then
-     removeLuaSprite('ready')
-   elseif tag == 'set' then
-     removeLuaSprite('set')
-   elseif tag == 'go' then
-     removeLuaSprite('go')
-    end
-end
-
-function GetDataNote(id, var)
-    return getPropertyFromGroup('notes', id, var)
+function onSongStart()
+   -- 99.9% accurate lmao
+   doTweenAlpha('timeTween2', 'timeBarBack', 1, 0.5, 'circOut')
+   doTweenAlpha('timeTween1', 'timeBarFront', 1, 0.5, 'circOut')
+   doTweenAlpha('watermarkTween', 'hudWatermark', 1, 0.5, 'circOut')
 end
 
 function onUpdate()
-  if middlescroll then
-      screenCenter('laneunderlay', 'X')
-      setProperty('laneunderlayOpponent.alpha', 0)
-  end
+   if nps > 0 and canDrain then
+     canDrain = false
+     runTimer('drainTimer', 1 / nps, 1)
+   end
 
-  isPixel = getPropertyFromClass('PlayState', 'isPixelStage')
-
-   setProperty('countdownReady.visible', false)
-   setProperty('countdownSet.visible', false)
-   setProperty('countdownGo.visible', false)
-
-    if judgementCounter then
-         setProperty('judgementCounter.text', 'Doki: '..getProperty('sicks')..'\nGood: '..getProperty('goods')..'\nOk: '..getProperty('bads')..'\nNo: '..getProperty('shits')..'\nMiss: '..getProperty('songMisses'));
-
-    end
-
-    beforeScore = 'Score: 0 | Breaks: 0 | Rating: ?'
-    finalScore = 'Score: '..score..' | Breaks: '..misses..' | Rating: '..ratingName..' ('..round(rating * 100,2)..'%) - '..ratingFC
-    beforeScoreNps = 'NPS: 0 (Max: 0) | Score: 0 | Breaks: 0 | Rating: ?'
-    finalScoreNps = 'NPS: '..nps..' (Max: '..npsMax..') | Score: '..score..' | Breaks: '..misses..' | Rating: '..ratingName..' ('..round(getProperty('ratingPercent') * 100 , 2)..'%) - '..ratingFC
-
-    if rating == 0 then
-      if npsEnabled then
-        setProperty('scoreTxt.text', 'NPS: 0 (Max: 0) | Score: 0 | Breaks: 0 | Rating: ?')
-        setProperty('ddtoScoreTxt.text', 'NPS: 0 (Max: 0) | Score: 0 | Breaks: 0 | Rating: ?')
-       else
-        setProperty('scoreTxt.text', 'Score: 0 | Breaks: 0 | Rating: ?')
-        setProperty('ddtoScoreTxt.text', 'Score: 0 | Breaks: 0 | Rating: ?')
-      end
-    else
-      if npsEnabled then
-        setProperty('scoreTxt.text', finalScoreNps)
-        setProperty('ddtoScoreTxt.text', finalScoreNps)
-       else
-        setProperty('scoreTxt.text', finalScore)
-        setProperty('ddtoScoreTxt.text', finalScore)
-        end
-    end
-
-    if nps > 0 and reduce == true then
-        reduce = false
-        runTimer('reduce nps', 1 / nps , 1)	
-    end
-        if nps == 0 then
-        reduce = true
-    end
-
-    if nps > npsMax then
-        npsMax = nps
-    end
-
-    combo = getProperty('combo')
-
-    if combo > maxCombo then
-        maxCombo = combo
-    end
-
-    if isPixel then
-      pixelShitPart1 = 'pixelUI/'
-      pixelShitPart2 = '-pixel'
-      setTextFont('scoreTxt', getFont('vcr'))
-      setTextFont('ddtoScoreTxt', getFont('vcr'))
-      setTextFont('timeTxt', getFont('vcr'))
-      setTextFont('judgementCounter', getFont('vcr'))
-      setTextFont('botplayTxt', getFont('vcr'))
-      setTextFont('practiceTxt', getFont('vcr'))
-    else
-      pixelShitPart1 = ''
-      pixelShitPart2 = ''
-      setTextFont('scoreTxt', getFont()) 
-      setTextFont('ddtoScoreTxt', getFont())
-      setTextFont('timeTxt', getFont()) 
-      setTextFont('judgementCounter', getFont())
-      setTextFont('botplayTxt', getFont('riffic'))
-      setTextFont('practiceTxt', getFont('riffic'))
-    end
-
-    if getProperty('cpuControlled') and getProperty('practiceMode') then
-      setProperty('practiceTxt.visible', false)
-      setProperty('botplayTxt.visible', true)
-    elseif not getProperty('cpuControlled') and getProperty('practiceMode') then
-      setProperty('practiceTxt.visible', true)
-      setProperty('botplayTxt.visible', false)
-    end
-
-    if rating >= 0.9935 then
-        ratingName = 'AAAAA'
-    elseif rating >= 0.980 then
-        ratingName = 'AAAA:'
-    elseif rating >= 0.970 then
-        ratingName = 'AAAA.'
-    elseif rating >= 0.955 then
-        ratingName = 'AAAA'
-    elseif rating >= 0.90 then
-        ratingName = 'AAA:'
-    elseif rating >= 0.80 then
-        ratingName = 'AAA.'
-    elseif rating >= 0.70 then
-        ratingName = 'AAA'
-    elseif rating >= 0.99 then
-        ratingName = 'AA:'
-    elseif rating >= 0.9650 then
-        ratingName = 'AA.'
-    elseif rating >= 0.93 then
-        ratingName = 'AA'
-    elseif rating >= 0.90 then
-        ratingName = 'A:'
-    elseif rating >= 0.85 then
-        ratingName = 'A.'
-    elseif rating >= 0.80 then
-        ratingName = 'A'
-    elseif rating >= 0.70 then
-        ratingName = 'B'
-    elseif rating >= 0.60 then
-        ratingName = 'C'
-    elseif rating < 60 then
-        ratingName = 'D'
-    else
-        ratingName = 'D'
-    end
-
-    if getProperty('songMisses') == 0 and getProperty('bads') == 0 and getProperty('shits') == 0 and getProperty('goods') == 0 then
-      ratingFC = 'SFC' -- Sick Full Combo
-    elseif getProperty('songMisses') == 0 and getProperty('bads') == 0 and getProperty('shits') == 0 and getProperty('goods') >= 1 then
-      ratingFC = 'GFC' -- Good Full Combo
-    elseif getProperty('songMisses') == 0 then
-      ratingFC = 'FC' -- Full Combo
-    elseif getProperty('songMisses') < 10 then
-      ratingFC = 'SDCB' -- Single Digit Combo Break
-    else
-      ratingFC = 'Clear'
-    end
+   if nps == 0 then
+     canDrain = true
+   end
+   setProperty('timeTxt.text', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(remainingTime())..')')
 end
 
 function onUpdatePost(elapsed)
-  botplaySine = botplaySine + 180 * elapsed
+   botplaySine = botplaySine + 180 * elapsed
 
-    setProperty('practiceTxt.alpha', 1 - math.sin(math.pi * botplaySine / 180))
-
-    if playbackRate == 1 then
-       setTextString('timeTxt', songName..' ('..formatTime(remainingTime())..')')
-     else
-       setTextString('timeTxt', songName..' ('..playbackRate..'x) ('..formatTime(remainingTime())..')')
-    end
-
-   if mirrorMode then
-	setProperty('healthBar.value', 2 - getHealth())
-	addHaxeLibrary('FlxMath', 'flixel.math')
-	runHaxeCode([[
-	var iconOffset = 26;
-	game.iconP1.x = game.healthBar.x + (game.healthBar.width * (FlxMath.remapToRange(game.healthBar.percent, 0, 100, 100, 0) * 0.01)) + (150 * game.iconP1.scale.x - 150) / 2 - iconOffset;
-	game.iconP2.x = game.healthBar.x + (game.healthBar.width * (FlxMath.remapToRange(game.healthBar.percent, 0, 100, 100, 0) * 0.01)) - (150 * game.iconP2.scale.x) / 2 - iconOffset * 2;
-	var iconArray = [game.iconP1, game.iconP2];
-	    for (icon in iconArray) {
-		var i = iconArray.indexOf(icon);
-		icon.animation.curAnim.curFrame = (i < 1 ? game.healthBar.percent < 20 : game.healthBar.percent > 80) ? 1 : 0;
-	    }
-	]])
-    end
-end
-
-function onEvent(name, value1, value2)
-  if name == 'Change Character' then
-   changeGradientBar()
-    end
-end
-    
-function onSongStart()
-   -- 99.9% accurate lmao
-   doTweenAlpha('timeTween', 'timeBarBack', 1, 0.5, 'circOut')
-end
-
-function noteMiss(id, noteData, noteType, isSustainNote)
-   if mirrorMode == true then
-    animToPlay = getProperty('singAnimations')[noteData + 1]
-     char = 'dad'
-     if not (getPropertyFromGroup('notes', id, 'noMissAnimation')) then
-        if checkAnimationExists(char, animToPlay, 'miss') then
-             playAnim(char, animToPlay..'miss', true)
-          else
-	     playAnim(char, animToPlay, true)
-            end
-        end
-    end
-end
-
-function opponentNoteHit(id, noteData, noteType, isSustainNote)
-   if mirrorMode then
-     animToPlay = getProperty('singAnimations')[noteData + 1]
-     char = 'boyfriend'
-          if noteType == 'GF Sing' then
-             playAnim('gf', animToPlay, true)
-             char = 'gf'
-          end
-
-          if noteType == 'Hey!' then
-             playAnim(char, 'hey', true)
-             setProperty(char..'.specialAnim', true)
-             setProperty(char..'.heyTimer', 0.6)
-          end
-
-          if noteType == 'Alt Animation' then
-             if checkAnimationExists(char, animToPlay, '-alt') then
-                 playAnim(char, animToPlay..'-alt', true)
-             else
-                 playAnim(char, animToPlay, true)
-              end
-          end
-
-          if noteType == 'No Animation' then
-              playAnim(char, 'idle')
-          end
-
-          if noteType == '' then
-             playAnim(char, animToPlay, true)
-          end
-
-         if gfSection then
-            playAnim('gf', animToPlay, true)
-            char = 'gf'
-         elseif altAnim then
-            if checkAnimationExists(char, animToPlay, '-alt') then
-               playAnim(char, animToPlay..'-alt', true)
-             else
-               playAnim(char, animToPlay, true)
-             end
-         end
-       setProperty(char..'.holdTimer', 0)
-    end
+   setProperty('practiceTxt.visible', getProperty('practiceMode'))
+   if getProperty('practiceTxt.visible') then
+     setProperty('practiceTxt.alpha', 1 - math.sin(math.pi * botplaySine / 180))
+   end
+   -- setProperty('timeTxt.text', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(remainingTime())..')')
 end
 
 function goodNoteHit(noteID, noteData, noteType, isSustainNote)
-    local ratingOffset = getPropertyFromClass('ClientPrefs', 'ratingOffset')
-    local Rating = (getPropertyFromGroup('notes', noteID, 'strumTime') - getSongPosition() + ratingOffset)
-    if not isSustainNote then
-      if not botPlay or not getProperty('cpuControlled') then
-        setProperty('ddtoScoreTxt.scale.x', 1.075)
-        setProperty('ddtoScoreTxt.scale.y', 1.075)
-        cancelTween('ddtoScoreTxtTweenX')
-        cancelTween('ddtoScoreTxtTweenY')
-        doTweenX('ddtoScoreTxtTweenX', 'ddtoScoreTxt.scale', 1, 0.2)
-        doTweenY('ddtoScoreTxtTweenY', 'ddtoScoreTxt.scale', 1, 0.2)
+   noteDiff = getPropertyFromGroup('notes', noteID, 'strumTime') - getSongPosition()
+   daRating = getPropertyFromGroup('notes', noteID, 'rating')
+   if not isSustainNote then
+      if scoreZoom then
+        startTextZoom('scoreTxt', 1.075, 1, 0.2)
+          if getOptionData('customFeatures') then
+            startTextZoom('judgementCounter', 1.075, 1, 0.2)
+          end
       end
-        nps = nps + 1
-    end
+      nps = nps + 1
 
-    if mirrorMode then
-     animToPlay = getProperty('singAnimations')[noteData + 1]
-       char = 'dad'
-         if noteType == 'GF Sing' then
-            playAnim('gf', animToPlay, true)
-            char = 'gf'
-         end
+      if nps > maxNps then
+        maxNps = nps
+      end
 
-         if noteType == 'Hey!' then
-              playAnim(char, 'hey', true)
-              setProperty(char..'.specialAnim', true)
-              setProperty(char..'.heyTimer', 0.6)
-         end
+      if botPlay then
+        botHits = botHits + 1
 
-         if noteType == 'Alt Animation' then
-            if checkAnimationExists(char, animToPlay, '-alt') then
-               playAnim(char, animToPlay..'-alt', true)
-             else
-               playAnim(char, animToPlay, true)
-             end
+         if daRating == 'sick' then
+           botScore = botScore + botScores.sick[1]
+           botNotes = botNotes + botScores.sick[2]
+         elseif daRating == 'good' then
+           botScore = botScore + botScores.good[1]
+           botNotes = botNotes + botScores.good[2]
+         elseif daRating == 'bad' then
+           botScore = botScore + botScores.bad[1]
+           botNotes = botNotes + botScores.bad[2]
+         elseif daRating == 'shit' then
+           botScore = botScore + botScores.shit[1]
+           botNotes = botNotes + botScores.shit[2]
          end
+      end
 
-         if noteType == 'No Animation' then
-             playAnim(char, 'idle')
+      if getOptionData('earlyLate') then
+         if daRating ~= 'sick' then
+            if noteDiff > 0 then
+              popupDelay('Late', 'FF0000')
+              lates = lates + 1
+            elseif noteDiff < 0 then
+              popupDelay('Early', '00FFFF')
+              earlys = earlys + 1
+            end
          end
-
-         if noteType == '' then
-              playAnim(char, animToPlay, true)
-         end
-
-         if gfSection then
-            playAnim('gf', animToPlay, true)
-            char = 'gf'
-         elseif altAnim then
-            if checkAnimationExists(char, animToPlay, '-alt') then
-               playAnim(char, animToPlay..'-alt', true)
-             else
-               playAnim(char, animToPlay, true)
-             end
-         end
-      setProperty(char..'.holdTimer', 0)
-    end
+      end
+   end
+   onRecalculateRating()
 end
 
-function changeGradientBar(colorShitDad, colorShitBF)
-    addHaxeLibrary('Std')
-  if colorShitBF == nil then
-    runHaxeCode([[
-        var wawa = [];
-        for (i in game.dad.healthColorArray) wawa.push(StringTools.hex(i, 2));
-        var wawa2 = [];
-        for (i in game.boyfriend.healthColorArray) wawa2.push(StringTools.hex(i, 2));
-        game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + wawa2.join('')), Std.parseInt('0xFF' + wawa.join(''))]);
-    ]])
-  else
-    runHaxeCode([[
-        var wawa = [];
-        for (i in game.dad.healthColorArray) wawa.push(StringTools.hex(i, 2));
-        var wawa2 = [];
-        for (i in game.boyfriend.healthColorArray) wawa2.push(StringTools.hex(i, 2));
-        game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + ']]..colorShitBF..[['), Std.parseInt('0xFF' + wawa.join(''))]);
-    ]])
-  end
-  if colorShitDad == nil then
-    runHaxeCode([[
-        var wawa = [];
-        for (i in game.dad.healthColorArray) wawa.push(StringTools.hex(i, 2));
-        var wawa2 = [];
-        for (i in game.boyfriend.healthColorArray) wawa2.push(StringTools.hex(i, 2));
-        game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + wawa2.join('')), Std.parseInt('0xFF' + wawa.join(''))]);
-    ]])
-  else
-    runHaxeCode([[
-        var wawa = [];
-        for (i in game.dad.healthColorArray) wawa.push(StringTools.hex(i, 2));
-        var wawa2 = [];
-        for (i in game.boyfriend.healthColorArray) wawa2.push(StringTools.hex(i, 2));
-        game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + wawa2.join('')), Std.parseInt('0xFF' + ']]..colorShitDad..[[')]);
-    ]])
-    end
+function noteMiss(noteID, noteData, noteType, isSustainNote)
+   if getOptionData('customFeatures') then
+     onUpdateScore(true)
+     startTextColor('scoreTxt', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
+     startTextColor('judgementCounter', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
+   end
+end
+
+function noteMissPress(noteID, noteData, noteType, isSustainNote)
+   if getOptionData('customFeatures') then
+     onUpdateScore(true)
+     startTextColor('scoreTxt', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
+     startTextColor('judgementCounter', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
+   end
+end
+
+function onRecalculateRating()
+   botRating = math.min(1, math.max(botNotes / botHits))
+
+   curRating = (botPlay and botRating or getProperty('ratingPercent'))
+   notesPlayed = (botPlay and botHits or getProperty('totalPlayed'))
+
+   if notesPlayed < 1 then
+     ratingName = '?'
+   else
+      if curRating >= 0.9935 then
+        ratingName = ratingStuff.doki[#ratingStuff.doki][1]
+          for i = 1, #ratingStuff.doki do
+             if curRating >= ratingStuff.doki[i][2] then
+               ratingName = ratingStuff.doki[i][1]
+             elseif curRating < 0.60 then
+               ratingName = ratingStuff.doki[i][1]
+             end
+          end
+      end
+   end
+   getRatingFC()
+   onUpdateScore()
+end
+
+function getRatingFC()
+   -- compat i guess
+   sicks = (version:find('0.7') and getProperty('ratingsData[0].hits') or getProperty('sicks'))
+   goods = (version:find('0.7') and getProperty('ratingsData[1].hits') or getProperty('goods'))
+   bads = (version:find('0.7') and getProperty('ratingsData[2].hits') or getProperty('bads'))
+   shits = (version:find('0.7') and getProperty('ratingsData[3].hits') or getProperty('shits'))
+
+   ratingFC = ''
+   if getProperty('songMisses') == 0 and bads == 0 and shits == 0 and goods == 0 then
+      ratingFC = 'SFC' -- Sick Full Combo
+   elseif getProperty('songMisses') == 0 and bads == 0 and shits == 0 and goods >= 1 then
+      ratingFC = 'GFC' -- Good Full Combo
+   elseif getProperty('songMisses') == 0 then
+      ratingFC = 'FC' -- Full Combo
+   elseif getProperty('songMisses') < 10 then
+      ratingFC = 'SDCB' -- Single Digit Combo Break
+   else
+      ratingFC = 'Clear'
+   end
+end
+
+function onUpdateScore(miss)
+   ratingCalc = (botPlay and botRating or getProperty('ratingPercent'))
+   scoreString = (botPlay and botScore or getProperty('songScore'))
+   missString = getProperty('songMisses')
+   ratingString = round(ratingCalc * 100, 2)
+
+   sicks = (version:find('0.7') and getProperty('ratingsData[0].hits') or getProperty('sicks'))
+   goods = (version:find('0.7') and getProperty('ratingsData[1].hits') or getProperty('goods'))
+   bads = (version:find('0.7') and getProperty('ratingsData[2].hits') or getProperty('bads'))
+   shits = (version:find('0.7') and getProperty('ratingsData[3].hits') or getProperty('shits'))
+
+   beforeScore = (getOptionData('npsEnabled') and 'NPS: 0 (Max: 0) | ' or '')..'Score: 0 | Breaks: 0 | Rating: ?'
+   finalScore = (getOptionData('npsEnabled') and 'NPS: '..nps..' (Max: '..maxNps..') | ' or '')..'Score: '..scoreString..' | Breaks: '..missString..' | Rating: '..ratingName..' ('..ratingString..'%)'
+
+   setProperty('scoreTxt.text', (ratingName ~= '?' and finalScore or beforeScore))
+
+   if getProperty('combo') > maxCombo then
+     maxCombo = getProperty('combo')
+   end
+
+   judgementString = 'Doki: '..sicks..'\nGood: '..goods..'\nOk: '..bads..'\nNo: '..shits..'\nMiss: '..getProperty('songMisses')..'\n'
+
+    if getOptionData('judgementCounter') then
+      if getOptionData('earlyLate') then
+         setProperty('judgementCounter.text', judgementString..'\nEarly: '..earlys..'\nLate: '..lates..'\n\nMax: '..maxCombo)
+      else
+         setProperty('judgementCounter.text', judgementString..'\nMax: '..maxCombo) 
+      end
+   end
+end
+
+function onDestroy()
+  setPropertyFromClass('PlayState', 'ratingStuff', ratingStuff.default)
 end
 
 function onTimerCompleted(tag, loops, loopsLeft)
-    if tag == 'reduce nps'  and nps > 0 then
-        runTimer('reduce nps', 1/nps, 1)
-        nps = nps - 1
+   if tag == 'drainTimer' then
+     reloadNps()
+   end
+end
+
+function onTweenCompleted(tag)
+   if tag == 'delayShown' then
+     removeLuaText('currentTimingShown')
+   end
+end
+
+function reloadNps()
+   if nps > 0 then 
+     runTimer('drainTimer', 1 / nps, 1)
+     nps = nps - 1
+   end
+   onUpdateScore(false)
+end
+
+function startTextZoom(daText, zoomScale, defaultZoom, duration) 
+   zoomScale = zoomScale or 1.075
+   defaultZoom = defaultZoom or 1
+   duration = duration or 0.25
+   cancelTween(daText..'ZoomTweenX')
+   cancelTween(daText..'ZoomTweenY')
+   setProperty(daText..'.scale.x', zoomScale)
+   setProperty(daText..'.scale.y', zoomScale)
+   doTweenX(daText..'ZoomTweenX', daText..'.scale', defaultZoom, duration)
+   doTweenY(daText..'ZoomTweenY', daText..'.scale', defaultZoom, duration)
+end
+
+function startTextColor(daText, daColor, ogColor, duration)
+   daColor = daColor or 'FF0000'
+   ogColor = ogColor or 'FFFFFF'
+   duration = duration or 0.25
+   setProperty(daText..'.color', getColorFromHex(daColor))
+   cancelTween(daText..'ColorTween')
+   doTweenColor(daText..'ColorTween', daText, ogColor, duration)
+end
+
+function popupDelay(text, color) 
+   makeLuaText('currentTimingShown', text:upper(), 0, 0, 0)
+   setTextFont('currentTimingShown', (isPixel and getFont('vcr') or getFont('riffic')))
+   setTextSize('currentTimingShown', 28)
+   setTextBorder('currentTimingShown', 1.5, '000000')
+   screenCenter('currentTimingShown')
+   setTextColor('currentTimingShown', (color == nil and 'FFFFFFF' or color))
+   setProperty('currentTimingShown.x', 405 + comboOffset[1] + 100)
+   setProperty('currentTimingShown.y', 230 - comboOffset[2] + 75)
+   setProperty('currentTimingShown.visible', not hideHud)
+   addLuaText('currentTimingShown')
+   doTweenAlpha('delayShown', 'currentTimingShown', 0, 0.2 + (crochet * 0.002))
+end
+
+function changeGradientBar(colorShitDad, colorShitBF)
+   reloadGradientColor()
+    if colorShitBF == nil  or colorShitBF:lower() == 'default' then
+      reloadGradientBar()
+    else
+      runHaxeCode([[
+        game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + ']]..colorShitBF..[['), Std.parseInt('0xFF' + dadColor.join(''))]);
+      ]])
+    end
+    if colorShitDad == nil or colorShitDad:lower() == 'default' then
+      reloadGradientBar()
+    else
+      runHaxeCode([[
+        game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + bfColor.join('')), Std.parseInt('0xFF' + ']]..colorShitDad..[[')]);
+      ]])
     end
 end
 
-function getHealthColor(chr)
-	return getColorFromHex(rgbToHex(getProperty(chr .. ".healthColorArray")))
+function reloadGradientBar()
+   reloadGradientColor()
+   runHaxeCode([[
+      game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + defaultBfColor.join('')), Std.parseInt('0xFF' + defaultDadColor.join(''))]);
+   ]])
 end
 
-function rgbToHex(array)
-	return string.format('%.2x%.2x%.2x', array[1], array[2], array[3])
+function reloadGradientColor()
+   runHaxeCode([[
+     defaultDadColor = [];
+     for (i in game.dad.healthColorArray) defaultDadColor.push(StringTools.hex(i, 2));
+     defaultBfColor = [];
+     for (i in game.boyfriend.healthColorArray) defaultBfColor.push(StringTools.hex(i, 2));
+     defaultGfColor = [];
+     for (i in game.gf.healthColorArray) defaultGfColor.push(StringTools.hex(i, 2));
+   ]])
 end
 
-function round(x, n) --https://stackoverflow.com/questions/18313171/lua-rounding-numbers-and-then-truncate
-    n = math.pow(10, n or 0)
-    x = x * n
-    if x >= 0 then x = math.floor(x + 0.5) else x = math.ceil(x - 0.5) end
-    return x / n
+function addValue(var, value)
+   daVar = var
+   daVar = daVar + value
 end
 
-function formatTime(millisecond)
-    local seconds = math.floor(millisecond / 1000)
-    return string.format("%01d:%02d", (seconds / 60) % 60, seconds % 60)  
+function addOptions()
+    -- put em here
+    saveData('ddtoOptions', 'judgementCounter', judgementCounter)
+    saveData('ddtoOptions', 'precacheAssets', precacheAssets)
+    saveData('ddtoOptions', 'coolGameplay', coolGameplay)
+    saveData('ddtoOptions', 'laneUnderlay', laneUnderlay)
+    saveData('ddtoOptions', 'laneTransparency', laneTransparency)
+    saveData('ddtoOptions', 'mirrorMode', mirrorMode)
+    saveData('ddtoOptions', 'gfCountdown', gfCountdown)
+    saveData('ddtoOptions', 'npsEnabled', npsEnabled)
+    saveData('ddtoOptions', 'earlyLate', earlyLate)
+    saveData('ddtoOptions', 'androidBuild', isAndroid)
+    saveData('ddtoOptions', 'enablePause', enableCustomPause)
+    saveData('ddtoOptions', 'secretPause', secretPause)
+    saveData('ddtoOptions', 'enableOpponentSplash', enableOpponentSplash)
+    saveData('ddtoOptions', 'enableSplash', enableSplash)
+    saveData('ddtoOptions', 'hitSoundVolume', hitSoundVolume)
+    saveData('ddtoOptions', 'judgeHitSound', judgeHitSound)
+    saveData('ddtoOptions', 'hitSound', enableHitSound)
+    saveData('ddtoOptions', 'showCredits', showCredits)
+    saveData('ddtoOptions', 'hudWatermark', hudWatermark)
+    saveData('ddtoOptions', 'customFeatures', customFeatures)
 end
 
-function remainingTime()
-    return getProperty('songLength') - (getSongPosition() - noteOffset)
+function getOptionData(var)
+   return getData('ddtoOptions', var)
 end
 
-function checkAnimationExists(char, anim, suffix)
-    if suffix == nil then
-      return runHaxeCode("game.]]..char..[[.anim.exists(']]..anim..[[');")
-     else
-      return runHaxeCode("game.]]..char..[[.anim.exists(']]..anim..[[' + ']]..suffix..[[');")
-    end
-      --return runHaxeCode("game.]]..char..[[.animOffsets.exists(']]..anim..[[' + ']]..animSuffix..[[');")
+function setOptionData(var, val)
+   saveData('ddtoOptions', var, val)
 end
-
-language = 'en-US'
 
 function getFont(type)
     font = ''
-   if type == nil or type == '' then type = 'aller' end
+    type = type or 'aller'
       if type == 'aller' then
         if language == 'ru-RU' then
           font = 'Ubuntu-Bold.ttf'
@@ -700,6 +552,7 @@ function getFont(type)
         else
           font = 'Aller_Rg.ttf'
         end
+
       elseif type == 'riffic' then
         if language == 'ru-RU' then
           font = 'Ubuntu-Bold.ttf'
@@ -708,6 +561,7 @@ function getFont(type)
         else
           font = 'riffic.ttf'
         end
+
       elseif type == 'halogen' then
         if language == 'ru-RU' then
           font = 'Ubuntu-Bold.ttf'
@@ -716,6 +570,7 @@ function getFont(type)
         else
           font = 'Halogen.otf'
         end
+
       elseif type == 'grotesk' then
         if language == 'ru-RU' then
           font = 'Ubuntu-Bold.ttf'
@@ -724,6 +579,7 @@ function getFont(type)
         else
           font = 'HKGrotesk-Bold.otf'
         end
+
       elseif type == 'pixel' then
           font = 'LanaPixel.ttf'
       elseif type == 'dos' then
@@ -734,6 +590,7 @@ function getFont(type)
         else
           font = 'Perfect DOS VGA 437 Win.ttf'
         end
+
       elseif type == 'vcr' then
         if language == 'ru-RU' then
           font = 'Ubuntu-Bold.ttf'
@@ -742,6 +599,7 @@ function getFont(type)
         else
           font = 'vcr.ttf'
         end
+
       elseif type == 'waifu' then
         if language == 'en-US' then
           font = 'CyberpunkWaifus.ttf'
@@ -750,4 +608,64 @@ function getFont(type)
         end
     end
    return font;
+end
+
+function setPosition(tag, x, y)
+   x = x or getProperty(tag, 'x')
+   y = y or getProperty(tag, 'y')
+   setProperty(tag..'.x', x)
+   setProperty(tag..'.y', y)
+end
+
+function setTextFormat(tag, font, size, color, alignment)
+   setTextFont(tag, font)
+   setTextSize(tag, size)
+   setTextColor(tag, color)
+   setTextAlignment(tag, alignment)
+end
+
+function saveData(dataGrp, dataField, dataValue)
+  setDataFromSave(dataGrp, dataField, dataValue)
+end
+
+function getData(dataGrp, dataField, dataValue)
+  return getDataFromSave(dataGrp, dataField, dataValue)
+end
+
+function formatTime(millisecond)
+    seconds = math.floor(millisecond / 1000)
+    return string.format("%01d:%02d", (seconds / 60) % 60, seconds % 60)  
+end
+
+function remainingTime()
+    return getProperty('songLength') - (getSongPosition() - noteOffset)
+end
+
+function getHealthColor(chr)
+   return rgbToHex(getProperty(chr .. ".healthColorArray"))
+end
+
+function rgbToHex(array)
+   return string.format('%.2x%.2x%.2x', array[1], array[2], array[3])
+end
+
+function round(x, n) --https://stackoverflow.com/questions/18313171/lua-rounding-numbers-and-then-truncate
+    n = math.pow(10, n or 0)
+    x = x * n
+    if x >= 0 then x = math.floor(x + 0.5) else x = math.ceil(x - 0.5) end
+    return x / n
+end
+
+function getRating(noteDiff, char)
+   noteDiff = math.abs(noteDiff)
+   if noteDiff <= getPropertyFromClass('ClientPrefs', 'badWindow') then
+     if noteDiff <= getPropertyFromClass('ClientPrefs', 'goodWindow') then
+       if noteDiff <= getPropertyFromClass('ClientPrefs', 'sickWindow') then
+	 return 'sick'
+	    end
+	    return 'good'
+        end
+        return 'bad'
+    end
+    return 'shit'
 end

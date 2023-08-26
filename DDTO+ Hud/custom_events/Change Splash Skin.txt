@@ -1,0 +1,3 @@
+Changes the custom splash skin
+Value1: splash skin name (Ex: psych, vanilla, psych-pixel [It must exist on the splash script])
+Value2: opponent version [true/false] (leaving it as blank is equal to false)

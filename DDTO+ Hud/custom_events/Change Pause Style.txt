@@ -1,0 +1,3 @@
+Changes the custom pause style
+Value1: pause style name (Ex: libitina, vallhalla [must exist on the pause script])
+leave blank for default

@@ -1,0 +1,11 @@
+Lyrics system that looks like the ddto version
+value1: The Lyric
+-- Value2 use ":" to split value --
+1.The Timer (leave blank for default timer)
+2.The Color (leave blank for default color) (put "custom" for custom color code)
+3.The Custom Color (leave blank to use default)
+Ex: value2: 1:RED -- non-custom
+Ex: value2: 1:CUSTOM:828282 -- custom
+you could put the color name here are the available colors
+[BLACK, BLUE, BROWN, CYAN, GRAY/GREY, GREEN, LIME, MAGENTA, ORANGE, PINK
+PURPLE, RED, WHITE, YELLOW]

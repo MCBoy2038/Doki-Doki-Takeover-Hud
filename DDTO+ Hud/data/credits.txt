@@ -1,17 +1,16 @@
 DDTO+ Hud Team
-MinecraftBoy2038::blank::Script Owner and Coder::https://www.youtube.com/c/MinecraftBoy2038::0xFFffffff
-Zachary0631::blank::Heavily Modified alot of things, Splash Script, and Pause Script::https://gamebanana.com/members/2101153::0xFFffffff
+MCBoy2038::mcboy::Script Owner and Coder::https://mcboy2038.carrd.co/#::a81123
+Zachary0631::blank::Script Co-Owner. Heavily Modified alot of things. Splash Script, and Pause Script::https://gamebanana.com/members/2101153::0xFFffffff
 Betopia::blank::Gradient Timebar Code::https://betopia.carrd.co/::0xFFffffff
 NF | beihu::blank::NPS Script::https://b23.tv/gxqO0GH::0xFFffffff
-Pumpsuki::blank::Previous Splash Script::https://pumpsuki.carrd.co/::0xFFffffff
-Jaldabo::blank::Helped with Credit Script::https://gamebanana.com/members/1961867::0xFFffffff
-Superpowers04::blank::Recoded Credit Script::https://gamebanana.com/members/1622031::0xFFffffff
+Superpowers04::superpowers04::Recoded Credit Script::https://gamebanana.com/members/1622031::b956ec
 Dsfan2::blank::Fixed Icon in Credit Script::https://gamebanana.com/members/1837665::0xFFffffff
 Sentive::blank::Lane Overlay Script::https://www.youtube.com/channel/UCTIaOCfQBAnY3vq2nzgYK0Q::0xFFffffff
-OOF PRODUCTIONS::blank::Tried helping::https://www.youtube.com/channel/UCVAf4TewS2ckoiHa8s8QiQg::0xFFffffff
-Aaron_R::blank::Fixed Gradient Timebar::https://gamebanana.com/members/2121879::0xFFffffff
+moonlitvoid::void::Promotion Artist::https://dreamofvoid.carrd.co/::969ab0
 
 Special Thanks
-Team TBD::blank::Without them and their amazing mod, this script wouldn't exist :)::https://gamebanana.com/studios/36659::0xFFffffff
+Team TBD::tbd::Without them and their amazing mod, this script wouldn't exist :)::https://gamebanana.com/studios/36659::fe8db7
+Pumpsuki::pumpsuki::Previous Splash Script::https://pumpsuki.carrd.co/::fd95d2
+Jaldabo::jaldabo::Helping me setting up the credit script during release::https://gamebanana.com/members/1961867::f68d16
 TailsDoesStuff::blank::Used this script alot lol::https://gamebanana.com/members/1780900::0xFFffffff
-And You!::blank::Yes, you! For using this script. This means alot to me and the team :)::https://gamebanana.com/tools/12677::0xFFffffff
+And You!::You!::Yes, you! For using this script. This means alot to me and the team :)::https://gamebanana.com/tools/12677::cb7d5c
