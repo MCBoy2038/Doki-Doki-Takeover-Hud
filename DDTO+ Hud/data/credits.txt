@@ -1,6 +1,6 @@
 DDTO+ Hud Team
 MCBoy2038::mcboy::Script Owner and Coder::https://mcboy2038.carrd.co/#::a81123
-Zachary0631::blank::Script Co-Owner. Heavily Modified alot of things. Splash Script, and Pause Script::https://gamebanana.com/members/2101153::0xFFffffff
+Zachary0631::zaxh::Script Co-Owner. Heavily Modified alot of things. Splash Script, and Pause Script::https://gamebanana.com/members/2101153::0xFFffffff
 Betopia::blank::Gradient Timebar Code::https://betopia.carrd.co/::0xFFffffff
 NF | beihu::blank::NPS Script::https://b23.tv/gxqO0GH::0xFFffffff
 Superpowers04::superpowers04::Recoded Credit Script::https://gamebanana.com/members/1622031::b956ec

@@ -1,4 +1,3 @@
-
 -- HUD OPTIONS --
 local precacheAssets = true -- Preloads every images used in the scripts [true/false]
 local judgementCounter = false -- Do you want to enable the judgement counter? [true/false]
@@ -12,7 +11,7 @@ local laneUnderlay = false -- Do you want to enable the lane underlay? [true/fal
 local laneTransparency = 0.3 -- Set the underlay on how transparent it is. Max 1
 local mirrorMode = false -- Do you want to play as the opponent? [true/false]
 local coolGameplay = false -- Do you want to enable coolGameplay?? lol [true/false]
-local autoPause = true -- Do you want to enable auto pause? [true/false]
+local autoPause = true -- Do you want to enable autoPause? [true/false]
 local hudWatermark = true -- Do you want to enable the HUD's watermark?? [true/false] (would recommened!!! /j)
 
 -- PAUSE OPTIONS --
@@ -73,13 +72,22 @@ local ratingStuff = {
   default = {},
 }
 
-local botScores = {
-   -- 1st one is the score and 2nd one is the ratingMod
-   sick = {350, 1},
-   good = {200, 0.7},
-   bad = {100, 0.4},
-   shit = {50, 0},
+local scoreStuff = {
+   doki = {
+       sick = {350, 1},
+       good = {200, 0.9},
+       bad = {0, 0.7},
+       shit = {-300, 0.4}
+   },
+   default = {
+       sick = {350, 1},
+       good = {200, 0.67},
+       bad = {100, 0.34},
+       shit = {50, 0}
+   }
 }
+
+local scoreShit = {}
 
 local isPixel = false
 local globalAntialiasing = false
@@ -104,6 +112,18 @@ function onCreate()
       setPropertyFromClass('flixel.FlxG', 'autoPause', true)
     end
 
+    if scoreSystem == 'doki' then
+      setRatingData(0, 'score', 350)
+      setRatingData(1, 'score', 200)
+      setRatingData(2, 'score', 0)
+      setRatingData(3, 'score', -300)
+
+      setRatingData(0, 'ratingMod', 1)
+      setRatingData(1, 'ratingMod', 0.9)
+      setRatingData(2, 'ratingMod', 0.7)
+      setRatingData(3, 'ratingMod', 0.4)
+    end
+
     -- compat i guess
     sicks = (version:find('0.7') and getProperty('ratingsData[0].hits') or getProperty('sicks'))
     goods = (version:find('0.7') and getProperty('ratingsData[1].hits') or getProperty('goods'))
@@ -111,7 +131,6 @@ function onCreate()
     shits = (version:find('0.7') and getProperty('ratingsData[3].hits') or getProperty('shits'))
 
     judgementString = 'Doki: '..sicks..'\nGood: '..goods..'\nOk: '..bads..'\nNo: '..shits..'\nMiss: '..getProperty('songMisses')..'\n'
-    setPropertyFromClass('ClientPrefs', 'timeBarType', 'Song Name') -- for now 
 
     if buildTarget == 'android' and not isAndroid then
       isAndroid = true
@@ -196,6 +215,14 @@ function onCreate()
    setObjectCamera('timeBarBack', 'hud')
    setProperty('timeBarBack.alpha', 0)
    addLuaSprite('timeBarBack')
+
+   makeLuaText('timeProgressTxt', '', 400, 0, 0)
+   setTextSize('timeProgressTxt', 18)
+   setTextFont('timeProgressTxt', (isPixel and getFont('vcr') or getFont('aller')))
+   setTextAlignment('timeProgressTxt', 'center')
+   setProperty('timeProgressTxt.alpha', 0)
+   setTextBorder('timeProgressTxt', 1.2, '000000')
+   addLuaText('timeProgressTxt')
 end
 
 function onCreatePost()
@@ -204,7 +231,10 @@ function onCreatePost()
    end
    setPropertyFromClass('PlayState', 'ratingStuff', ratingStuff.doki)
    reloadGradientBar()
-   runHaxeCode('game.timeBarBG.kill();')
+   runHaxeCode([[
+     game.timeBarBG.kill();
+     game.timeTxt.kill();
+   ]])
 
    setProperty('practiceTxt.y', getPropertyFromGroup('playerStrums', 0, 'y') + 35)
 
@@ -216,33 +246,35 @@ function onCreatePost()
    setTextBorder('timeTxt', 1.2, '000000')
    setProperty('timeTxt.y', getProperty('timeBarBack.y'))
 
+   setPosition('timeProgressTxt', getProperty('timeBarBack.x'), getProperty('timeBarBack.y'))
    setPosition('timeBar', getProperty('timeBarBack.x') + 4, getProperty('timeBarBack.y') + 4)
 
    setObjectOrder('timeBarBack', getObjectOrder('timeBarBG'))
    setObjectOrder('practiceTxt', getObjectOrder('botplayTxt'))
    setObjectOrder('judgementCounter', getObjectOrder('scoreTxt'))
    setObjectOrder('hudWatermark', getObjectOrder('scoreTxt'))
+   setObjectOrder('timeProgressTxt', getObjectOrder('scoreTxt'))
 end
 
 function onCountdownTick(swagCounter)
-   if not isPixel then
-     runHaxeCode([[
-        if (game.countdownReady != null && game.countdownReady.exists)
-          game.countdownReady.scale.set(0.6, 0.6);
+    runHaxeCode([[
+      if (game.countdownReady != null && game.countdownReady.exists && !PlayState.isPixelStage)
+        game.countdownReady.scale.set(0.6, 0.6);
 
-        if (game.countdownSet != null && game.countdownSet.exists)
-          game.countdownSet.scale.set(0.6, 0.6);
+      if (game.countdownSet != null && game.countdownSet.exists && !PlayState.isPixelStage)
+        game.countdownSet.scale.set(0.6, 0.6);
 
-        if (game.countdownGo != null && game.countdownGo.exists)
-          game.countdownGo.scale.set(0.6, 0.6);
-     ]])
-   end
+      if (game.countdownGo != null && game.countdownGo.exists && !PlayState.isPixelStage)
+        game.countdownGo.scale.set(0.6, 0.6);
+   ]])
 end
 
 function onSongStart()
    -- 99.9% accurate lmao
-   doTweenAlpha('timeTween2', 'timeBarBack', 1, 0.5, 'circOut')
-   doTweenAlpha('timeTween1', 'timeBarFront', 1, 0.5, 'circOut')
+   if timeBarType ~= 'Disabled' then
+     doTweenAlpha('timeTween', 'timeBarBack', 1, 0.5, 'circOut')
+     doTweenAlpha('timeTween2', 'timeProgressTxt', 1, 0.5, 'circOut')
+   end
    doTweenAlpha('watermarkTween', 'hudWatermark', 1, 0.5, 'circOut')
 end
 
@@ -255,7 +287,18 @@ function onUpdate()
    if nps == 0 then
      canDrain = true
    end
-   setProperty('timeTxt.text', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(remainingTime())..')')
+
+   if nps > maxNps then
+     maxNps = nps
+   end
+
+   if timeBarType == 'Time Left' then
+     setTextString('timeProgressTxt', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(remainingTime())..')')
+   elseif timeBarType == 'Song Name' then
+     setTextString('timeProgressTxt', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..difficultyName..')')
+   elseif timeBarType == 'Time Elapsed' then
+     setTextString('timeProgressTxt', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(getSongPosition() - noteOffset)..')')
+   end
 end
 
 function onUpdatePost(elapsed)
@@ -265,12 +308,13 @@ function onUpdatePost(elapsed)
    if getProperty('practiceTxt.visible') then
      setProperty('practiceTxt.alpha', 1 - math.sin(math.pi * botplaySine / 180))
    end
-   -- setProperty('timeTxt.text', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(remainingTime())..')')
 end
 
 function goodNoteHit(noteID, noteData, noteType, isSustainNote)
    noteDiff = getPropertyFromGroup('notes', noteID, 'strumTime') - getSongPosition()
    daRating = getPropertyFromGroup('notes', noteID, 'rating')
+   dokiRati = scoreStuff.doki
+   psychRati = scoreStuff.default
    if not isSustainNote then
       if scoreZoom then
         startTextZoom('scoreTxt', 1.075, 1, 0.2)
@@ -280,35 +324,31 @@ function goodNoteHit(noteID, noteData, noteType, isSustainNote)
       end
       nps = nps + 1
 
-      if nps > maxNps then
-        maxNps = nps
-      end
-
       if botPlay then
         botHits = botHits + 1
 
          if daRating == 'sick' then
-           botScore = botScore + botScores.sick[1]
-           botNotes = botNotes + botScores.sick[2]
+           botScore = botScore + getRatingData(0, 'score')
+           botNotes = botNotes + getRatingData(0, 'ratingMod')
          elseif daRating == 'good' then
-           botScore = botScore + botScores.good[1]
-           botNotes = botNotes + botScores.good[2]
+           botScore = botScore + getRatingData(1, 'score')
+           botNotes = botNotes + getRatingData(1, 'ratingMod')
          elseif daRating == 'bad' then
-           botScore = botScore + botScores.bad[1]
-           botNotes = botNotes + botScores.bad[2]
+           botScore = botScore + getRatingData(2, 'score')
+           botNotes = botNotes + getRatingData(2, 'ratingMod')
          elseif daRating == 'shit' then
-           botScore = botScore + botScores.shit[1]
-           botNotes = botNotes + botScores.shit[2]
+           botScore = botScore + getRatingData(3, 'score')
+           botNotes = botNotes + getRatingData(3, 'ratingMod')
          end
       end
 
       if getOptionData('earlyLate') then
          if daRating ~= 'sick' then
             if noteDiff > 0 then
-              popupDelay('Late', 'FF0000')
+              popupDelay('late', 'FF0000')
               lates = lates + 1
             elseif noteDiff < 0 then
-              popupDelay('Early', '00FFFF')
+              popupDelay('early', '00FFFF')
               earlys = earlys + 1
             end
          end
@@ -318,6 +358,7 @@ function goodNoteHit(noteID, noteData, noteType, isSustainNote)
 end
 
 function noteMiss(noteID, noteData, noteType, isSustainNote)
+   if nps > 0 then nps = nps - 1 end
    if getOptionData('customFeatures') then
      onUpdateScore(true)
      startTextColor('scoreTxt', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
@@ -326,6 +367,7 @@ function noteMiss(noteID, noteData, noteType, isSustainNote)
 end
 
 function noteMissPress(noteID, noteData, noteType, isSustainNote)
+   if nps > 0 then nps = nps - 1 end
    if getOptionData('customFeatures') then
      onUpdateScore(true)
      startTextColor('scoreTxt', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
@@ -390,7 +432,7 @@ function onUpdateScore(miss)
    shits = (version:find('0.7') and getProperty('ratingsData[3].hits') or getProperty('shits'))
 
    beforeScore = (getOptionData('npsEnabled') and 'NPS: 0 (Max: 0) | ' or '')..'Score: 0 | Breaks: 0 | Rating: ?'
-   finalScore = (getOptionData('npsEnabled') and 'NPS: '..nps..' (Max: '..maxNps..') | ' or '')..'Score: '..scoreString..' | Breaks: '..missString..' | Rating: '..ratingName..' ('..ratingString..'%)'
+   finalScore = (getOptionData('npsEnabled') and 'NPS: '..nps..' (Max: '..maxNps..') | ' or '')..'Score: '..scoreString..' | Breaks: '..missString..' | Rating: '..ratingName..' ('..ratingString..'%) - '..(botPlay and 'BOT' or ratingFC)
 
    setProperty('scoreTxt.text', (ratingName ~= '?' and finalScore or beforeScore))
 
@@ -491,6 +533,14 @@ function reloadGradientBar()
    runHaxeCode([[
       game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + defaultBfColor.join('')), Std.parseInt('0xFF' + defaultDadColor.join(''))]);
    ]])
+end
+
+function getRatingData(ratingNum, data)
+   return getProperty('ratingsData['..ratingNum..'].'..data)
+end
+
+function setRatingData(ratingNum, data, val)
+   setProperty('ratingsData['..ratingNum..'].'..data, val)
 end
 
 function reloadGradientColor()

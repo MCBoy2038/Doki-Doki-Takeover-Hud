@@ -1,7 +1,3 @@
-
--- FUNCTION STUFF (Do not remove) --
-dofile('mods/DDTO Hud/scripts/modules/callback.lua')
-
 -- OPTIONS --
 local randomSplash = false
 
@@ -13,7 +9,7 @@ local enablePixelShader = true
 local precacheBefore = true -- precaches the splash texture before getting loaded
 
 -- Code Variables -- 
-local splashSkins = {'doki', 'lib', 'psych', 'vanilla'}
+local splashSkins = {'doki', 'psych'}
 
 local splashType = ''
 local splashState = ''
@@ -33,7 +29,7 @@ local splashFps = 24
 local enablePixelShaderOp = true
 local precacheBeforeOp = true -- precaches the splash texture before getting loaded
 
-local splashSkinsOp = {'doki', 'lib', 'psych', 'vanilla'}
+local splashSkinsOp = {'doki', 'psych'}
 
 local splashTypeOp = ''
 local splashStateOp = ''
@@ -73,27 +69,25 @@ local defaultFpsOp = 24
 local splashCountOp = 0
 local splashDestroyedOp = 0
 
--- DDTO+ Port Exclusive --
+-- DDTO+ Port Exclusive (but might aswell make it public) only works with 'Hurt Notes' when pressed --
 local splashMarkov = ''
 local splashMarkovOp = ''
 
 function onCreatePost()
-   initLuaShader('pixelate')
+    initSaveData('DokiSplash')
+    initLuaShader('PixelEffectShader')
 
     precache = getDataFromSave('ddtoOptions', 'precacheAssets')
     precacheOp = getDataFromSave('ddtoOptions', 'precacheAssets')
     enableOpponentSplash = getDataFromSave('ddtoOptions', 'enableOpponentSplash')
     enableSplash = getDataFromSave('ddtoOptions', 'enableSplash')
 
-   isPixel = getClass('PlayState', 'isPixelStage')
+   isPixel = getPropertyFromClass('PlayState', 'isPixelStage')
    globalAntialiasing = getPropertyFromClass('ClientPrefs', 'globalAntialiasing')
-   setOnLuas('splashState', splashState)
-   setOnLuas('splashStateOp', splashStateOp)
+
    if isPixel then
      splashState = 'pixel'
      splashStateOp = 'pixel'
-     pixelIntensity = 6
-     pixelIntensityOp = 6
    end
    setProperty('grpNoteSplashes.visible', false)
 end
@@ -217,8 +211,6 @@ function spawnSplash(noteIndex, noteDirection, noteType, isOpponent)
           pixelizeSprite(splashString, (isOpponent and pixelIntensityOp or pixelIntensity), false)
         end
      end
-   setOnLuas('splashSkin', splashType)
-   setOnLuas('splashSkinOp', splashTypeOp)
 end
 
 function addSplashSkin(isOpponent)
@@ -236,32 +228,14 @@ function addSplashSkin(isOpponent)
     elseif splash == 'doki-pixel' and splashState ~= 'pixel' then
         setSplash((isOpponent and 'doki-pixelOp' or 'doki-pixel'))
 
-    elseif splash == 'lib' then
-        setSplash((isOpponent and 'libOp' or 'lib'))
-        if isPixel then
-          noPixelSprite = true
-          pixelIntensity = 3
-          noPixelSpriteOp = true
-          pixelIntensityOp = 3
-        end
-
     elseif splash == 'psych' then
-       setSplash((isOpponent and 'psychOp' or 'psych'))
        if isPixel then
-          noPixelSprite = true
-          pixelIntensity = 6
-          noPixelSpriteOp = true
-          pixelIntensityOp = 6
+         setSplash((isOpponent and 'psych-pixelOp' or 'psych-pixel'))
+         noPixelSprite = false
+         noPixelSpriteOp = false
+       else
+         setSplash((isOpponent and 'psychOp' or 'psych'))
        end
-
-    elseif splash == 'vanilla' then
-        setSplash((isOpponent and 'vanillaOp' or 'vanilla'))
-        if isPixel then
-          noPixelSprite = true
-          pixelIntensity = 6
-          noPixelSpriteOp = true
-          pixelIntensityOp = 6
-        end
     end
 end
 
@@ -315,28 +289,6 @@ function setSplash(skin)
      splashAntialiasingOp = false
    end
 
-   if skin == 'lib' then
-     resetDefault()
-     if precache and precacheBefore then
-       precacheImage('libbie_Splash')
-     end
-     splashMarkov = 'note splash blue 1'
-     splashTexture = 'libbie_Splash'
-     splashAnims = {'note splash purple 1', 'note splash blue 1', 'note splash green 1', 'note splash red 1'}
-     splashOffset = {75, 80}
-   end
-
-   if skin == 'libOp' then
-     resetDefault()
-     if precacheOp and precacheBeforeOp then
-       precacheImage('libbie_Splash')
-     end
-     splashMarkovOp = 'note splash blue 1'
-     splashTextureOp = 'libbie_Splash'
-     splashAnimsOp = {'note splash purple 1', 'note splash blue 1', 'note splash green 1', 'note splash red 1'}
-     splashOffsetOp = {75, 80}
-   end
-
    if skin == 'psych' then
      resetDefault()
      if precache and precacheBefore then
@@ -361,36 +313,42 @@ function setSplash(skin)
      splashOffsetOp = {110, 120}
    end
 
-   if skin == 'vanilla' then
+   if skin == 'psych-pixel' then
      resetDefault()
      if precache and precacheBefore then
-       precacheImage('vanillaSplashes')
+       precacheImage(splashPath .. 'noteSplashes' .. splashSuffix)
      end
-     splashTexture = 'vanillaSplashes'
+     splashPath = 'pixelUI/'
+     splashTexture = 'noteSplashes'
+     splashSuffix = '-pixel'
      randomChance = getRandomInt(1, 2) -- psych randomizer shit
      daAnims = {'note splash purple '..randomChance, 'note splash blue '..randomChance, 'note splash green '..randomChance, 'note splash red '..randomChance}
      splashAnims = daAnims
      offsetType = 'group'
-     splashOffset = {{100, 110}, {90, 110}, {90, 110}, {85, 110}}
+     splashOffset = {{115, 120}, {105, 140}, {135, 140}, {110, 140}}
+     splashAntialiasing = false
    end
 
-   if skin == 'vanillaOp' then
+   if skin == 'psych-pixelOp' then
      resetDefault()
      if precacheOp and precacheBeforeOp then
-       precacheImage('vanillaSplashes')
+       precacheImage(splashPath .. 'noteSplashes' .. splashSuffix)
      end
-     splashTextureOp = 'vanillaSplashes'
+     splashPathOp = 'pixelUI/'
+     splashTextureOp = 'noteSplashes'
+     splashSuffixOp = '-pixel'
      randomChanceOp = getRandomInt(1, 2) -- psych randomizer shit
      daAnimsOp = {'note splash purple '..randomChanceOp, 'note splash blue '..randomChanceOp, 'note splash green '..randomChanceOp, 'note splash red '..randomChanceOp}
      splashAnimsOp = daAnimsOp
      offsetTypeOp = 'group'
-     splashOffsetOp = {{100, 110}, {90, 110}, {90, 110}, {85, 110}}
+     splashOffsetOp = {{115, 120}, {105, 140}, {135, 140}, {110, 140}}
+     splashAntialiasingOp = false
    end
 end
 
 function pixelizeSprite(tag, size, removeShader) 
-   if removeShader == nil then removeShader = false end
-   setSpriteShader(tag, 'pixelate')
+   removeShader = removeShader or false
+   setSpriteShader(tag, 'PixelateShader')
    setShaderFloat(tag, 'mult', 0)
    setShaderFloatArray(tag, 'r', {0, 0, 0})
    setShaderFloatArray(tag, 'g', {0, 0, 0})
@@ -413,4 +371,12 @@ end
 
 function getNoteProperty(daNote, daDir, daVar)
    return getPropertyFromGroup(daNote, daDir, daVar)
+end
+
+function setSplashOption(data, val)
+   setDataFromSave('DokiSplash', data, val)
+end
+
+function getSplashOption(data, val)
+   return getDataFromSave('DokiSplash', data, val)
 end

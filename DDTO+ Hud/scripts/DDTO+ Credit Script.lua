@@ -9,9 +9,10 @@ local defaultBeat = {1, 2.5}
 local songData = {
     --[[
       ['song name from chart'] = {
+        -- The Main Options (In any order)
         name = 'display song name', (OPTIONAL)
-        icon = 'display icon',
         artist = 'display artist',
+        icon = 'display icon',
 
         -- The Way The Credits Appear/Disappear (ENABLE ONLY ONE) --
         showTimer = true/false, -- disappears through the sepecific timer (OPTIONAL)
@@ -39,7 +40,6 @@ local hasData = false
 function onCreate()
     isPixel = getPropertyFromClass('PlayState', 'isPixelStage')
     globalAntialiasing = getPropertyFromClass('ClientPrefs', 'globalAntialiasing')
-    skipCountdown = getProperty('skipCountdown') and getProperty('startedCountdown')
 
     song = songData[songName]
     hasData = song ~= nil
@@ -123,7 +123,6 @@ function tweenOut()
 	FlxTween.tween(game.getLuaObject('metaIcon'), {alpha: 0, y: 0 - (game.getLuaObject('metaIcon').height / 2) + 16}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.3});
 	FlxTween.tween(game.getLuaObject('metaArtist'), {alpha: 0, y: 38}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.3});
    ]])
-   runTimer('removeTimer', 0.8)
 end
 
 function createHealthIcon(tag, icon, crop)
@@ -140,21 +139,19 @@ function onTimerCompleted(tag)
    end
    if tag == 'removeTimer' then
      removeLuaSprite('metaIcon')
-     removeLuaSprite('metaArtist')
-     removeLuaSprite('metaName')
+     removeLuaText('metaArtist')
+     removeLuaText('metaName')
    end
 end
 
-function onStartCountdown()
-  if not skipCountdown then
+function onCountdownStarted()
     if not showStep and not showBeat then
        tweenIn()
-        end
     end
 end
 
 function onSongStart()
-  if skipCountdown then
+  if getProperty('skipCountdown') then
     if not showStep and not showBeat then
        tweenIn()
         end

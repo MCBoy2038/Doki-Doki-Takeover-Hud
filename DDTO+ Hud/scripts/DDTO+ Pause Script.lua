@@ -19,9 +19,11 @@ local pauseOptions = {
     -- Pause Art --
       callOnLuas('forcedPause', {art})
       callScript('scripts/DDTO+ Pause Menu', 'forcedPause', {art})
+      triggerEvent('Change Pause Art', 'art', '')
     -- Pause Style --
       callOnLuas('changeStyle', {art})
       callScript('scripts/DDTO+ Pause Menu', 'changeStyle', {art})
+      triggerEvent('Change Pause Style', 'art', '')
 ]]
 
 -- Pause Controls Keybinds --
@@ -34,7 +36,7 @@ local controls = {
   reset = 'O', -- extra keybind for resetting
   confirm = 'I', -- extra keybind for confirming selection
   toggle = 'Z', -- extra keybind for toggling the controls info
-}  
+}
 
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -51,6 +53,7 @@ local selColor = 'FFCFFF'
 -- Pause Menu Stuff --
 local hasData = false
 local forcePauseArt = ''
+local isAndroid = false
 local selectedSomethin = false
 local canPress = false
 local replaySelect = false
@@ -67,6 +70,7 @@ local curSelected = 1
 local currentState = ''
 local currentPause = ''
 local selectedPractice = false
+local canPause = false
 
 -- Pause Skip Time --
 local holdTime = 0
@@ -76,6 +80,7 @@ local difficultyLength = 1
 
 -- Button Stuff --
 local buttonSprites = {'up', 'down', 'left', 'right', 'confirm', 'exit', 'reset'}
+
 
 function onCreate()
    addHaxeLibrary('FlxTransitionableState', 'flixel.addons.transition')
@@ -92,7 +97,6 @@ function onCreate()
    globalAntialiasing = getPropertyFromClass('ClientPrefs', 'globalAntialiasing')
    chartingMode = getPropertyFromClass('PlayState', 'chartingMode')
    deathCounter = getPropertyFromClass('PlayState', 'deathCounter')
-   songPosition = getPropertyFromClass('Conductor', 'songPosition')
 
    if boyfriendName:find('bf') then
      curCharacter = 2
@@ -104,7 +108,7 @@ function onCreate()
 
    pauseStuff = pauseOptions[songName]
 
-   hasData = pauseStuff ~= nil
+   hasData = not pauseStuff == nil
 
    if hasData then
      artData = pauseStuff.art or defaultPause
@@ -114,12 +118,10 @@ function onCreate()
      deathData = deathInfo[curCharacter]
    end
 
-   createButton('pause', 'Android_Buttons', 1195, 635, 0.7, true)
+   if isAndroid then createButton('pause', 'Android_Buttons', 1195, 635, 0.7, true) end
    if customCursor then
      makeLuaSprite('gameCursor', 'cursor')
      setObjectCamera('gameCursor', 'other')
-     scaleObject('gameCursor', 0.7, 0.7)
-     setProperty('gameCursor.angle', 10)
      setProperty('gameCursor.visible', false)
      addLuaSprite('gameCursor', true)
    end
@@ -130,11 +132,15 @@ function onCreate()
    updatePauseOptions()
 end
 
-function onCountdownStarted()
-   if not getProperty('skipCountdown') then
-     showButton('pause', isAndroid)
-     setProperty('gameCursor.visible', isAndroid)
+function onPause()
+   if enablePause then
+     return Function_Stop
    end
+end
+
+function onCountdownStarted()
+   showButton('pause', isAndroid)
+   setProperty('gameCursor.visible', isAndroid)
 end
 
 function onEvent(name, value1, value2)
@@ -153,19 +159,18 @@ function onSongStart()
    table.insert(debugItems, 1, 'Skip Time')
 end
 
-function onUpdate()
-   androidPAUSE = mouseReleasedObject('pauseButton') or androidControlReleased('BACK')
+function onUpdate(elapsed)
    if getProperty('gameCursor.visible') then
-      setPosition('gameCursor', getMouseX('camOTHER') - 10, getMouseY('camOTHER'))
+      setPosition('gameCursor', getMouseX('camOTHER'), getMouseY('camOTHER'))
    end
    if isAndroid then
      playButtonAnim('pause', 'idle')
-     if androidPAUSE and currentState ~= 'closing' and startedCountdown then
+     if mouseReleasedObject('pauseButton') or androidControlReleased('BACK') and getProperty('startedCountdown') and currentState ~= 'closing' then
         playButtonAnim('pause', 'pressed')
         pauseState(allowSecret)
       end
    else
-      if multiKeyJustPressed({'pause', 'back'}) or keyboardJustPressed('ENTER') and currentState ~= 'closing' and startedCountdown then
+      if getProperty('controls.PAUSE') and getProperty('startedCountdown') and currentState ~= 'closing' then
         pauseState(allowSecret)
       end
    end
@@ -175,24 +180,20 @@ function onCustomSubstateCreate(tag)
    if tag == 'DokiPause' then
      curTime = getSongPosition()
 
-     switch(pauseStyle, {
-       ['libitina'] = function()
-          itmColor = '8BA9F0'
-       end,
-       ['vallhalla'] = function()
-          itmColor = 'FF3A89'
-       end
-     })
+     if pauseStyle == 'libitina' then
+       itmColor = '8BA9F0'
+     elseif pauseStyle == 'vallhalla' then
+       itmColor = 'FF3A89'
+     end
 
      if luaSoundExists('pauseMusic') then
        resumeSound('pauseMusic')
        setSoundVolume('pauseMusic', 0)
      else
-       playSound('disco', 0, 'pauseMusic')
+       playSound('/../music/disco', 0, 'pauseMusic')
      end
 
-     makeLuaSprite('pausebg')
-     makeGraphic('pausebg', screenWidth * 3, screenHeight * 3, '000000')
+     createObject('graphic', 'pausebg', {width = screenWidth * 3, height = screenHeight * 3, color = '000000'})
      setProperty('pausebg.alpha', 0)
      addSubstateObject('pausebg')
 
@@ -201,19 +202,17 @@ function onCustomSubstateCreate(tag)
      else
        pauseImg = artData
      end
-     makeLuaSprite('pauseArt', 'pause/' .. pauseImg, screenWidth, 0)
+     makeLuaSprite('pauseArt', 'pause/' .. pauseImg, screenWidth, 0, 0)
      addSubstateObject('pauseArt')
      if pauseStyle == 'libitina' then setProperty('pauseArt.x', -getProperty('pauseArt.width')) end
      runHaxeCode([[FlxTween.tween(game.getLuaObject('pauseArt'), {x: ]]..screenWidth..[[ - ]]..getProperty('pauseArt.width')..[[}, 1.2, {ease: FlxEase.quartInOut, startDelay: 0.2});]])
 
-     makeLuaText('levelInfo', songName, screenWidth, 20, 15)
-     setTextFormat('levelInfo', getFont(), 32, getFlxColor('WHITE'), 'right')
-     setTextBorder('levelInfo', 1.25, getFlxColor('BLACK'))
+     createObject('text', 'levelInfo', {text = songName, x = 20, y = 15, width = screenWidth})
+     setTextFormat('levelInfo', getFont(), 32, 'FFFFFF', 'right', {1.25, '000000'})
      addSubstateObject('levelInfo')
 
-     makeLuaText('levelDifficulty', difficultyName:upper(), screenWidth, 20, 15 + 32)
-     setTextFormat('levelDifficulty', getFont(), 32, getFlxColor('WHITE'), 'right')
-     setTextBorder('levelDifficulty', 1.25, getFlxColor('BLACK'))
+     createObject('text', 'levelDifficulty', {text = getText('diff'):upper(), x = 20, y = 15 + 32, width = screenWidth})
+     setTextFormat('levelDifficulty', getFont(), 32, 'FFFFFF', 'right', {1.25, '000000'})
      addSubstateObject('levelDifficulty')
 
      if pauseStuff == nil or isNullValue(deathData) then
@@ -222,32 +221,27 @@ function onCustomSubstateCreate(tag)
        deathTag = deathData
      end
 
-     makeLuaText('deathText', deathTag..': '..deathCounter, screenWidth, 20, 15 + 64)
-     setTextFormat('deathText', getFont(), 32, getFlxColor('WHITE'), 'right')
-     setTextBorder('deathText', 1.25, getFlxColor('BLACK'))
+     createObject('text', 'deathText', {text = deathTag..': '..deathCounter, x = 20, y = 15 + 64, width = screenWidth})
+     setTextFormat('deathText', getFont(), 32, 'FFFFFF', 'right', {1.25, '000000'})
      addSubstateObject('deathText')
 
-     makeLuaText('practiceText', 'Practice Mode', screenWidth, 20, 15 + 96)
-     setTextFormat('practiceText', getFont(), 32, getFlxColor('WHITE'), 'right')
-     setTextBorder('practiceText', 1.25, getFlxColor('BLACK'))
+     createObject('text', 'practiceText', {text = getText('practice'):upper(), x = 20, y = 15 + 96, width = screenWidth})
+     setTextFormat('practiceText', getFont(), 32, 'FFFFFF', 'right', {1.25, '000000'})
      setProperty('practiceText.visible', getProperty('practiceMode'))
      addSubstateObject('practiceText')
 
-     makeLuaText('botplayText', 'BOTPLAY', screenWidth, 240, 630)
-     setTextFormat('botplayText', getFont(), 32, getFlxColor('WHITE'), 'right')
-     setTextBorder('botplayText', 1.25, getFlxColor('BLACK'))
+     createObject('text', 'botplayText', {text = getText('botplay'):upper(), x = 240, y = 630, width = screenWidth})
+     setTextFormat('botplayText', getFont(), 32, 'FFFFFF', 'right', {1.25, '000000'})
      setProperty('botplayText.visible', getProperty('cpuControlled'))
      addSubstateObject('botplayText')
 
-     makeLuaText('chartingText', 'Charting Mode', screenWidth, 240, 660)
-     setTextFormat('chartingText', getFont(), 32, getFlxColor('WHITE'), 'right')
-     setTextBorder('chartingText', 1.25, getFlxColor('BLACK'))
+     createObject('text', 'chartingText', {text = getText('chart'), x = 240, y = 660, width = screenWidth})
+     setTextFormat('chartingText', getFont(), 32, 'FFFFFF', 'right', {1.25, '000000'})
      setProperty('chartingText.visible', getPropertyFromClass('PlayState', 'chartingMode'))
      addSubstateObject('chartingText')
 
-     makeLuaText('speedText', 'Speed: '..playbackRate..'x (Control + Left/Right)', 0, 410, 15)
-     setTextFormat('speedText', getFont(), 32, getFlxColor('WHITE'), 'left')
-     setTextBorder('speedText', 1.25, getFlxColor('BLACK'))
+     createObject('text', 'speedText', {text = getText('speedControl'), x = 410, y = 15})
+     setTextFormat('speedText', getFont(), 32, 'FFFFFF', 'right', {1.25, '000000'})
      setProperty('speedText.visible', getProperty('practiceMode'))
      addSubstateObject('speedText')
 
@@ -278,77 +272,58 @@ function onCustomSubstateCreate(tag)
         FlxTween.tween(game.getLuaObject('chartingText'), {alpha: 1, y: ]]..getProperty('chartingText.y')..[[ + 5}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.4});
         FlxTween.tween(game.getLuaObject('speedText'), {alpha: 1, y: ]]..getProperty('speedText.y')..[[ + 5}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.3});
      ]])
- 
-     if pauseStyle == 'libitina' or isLibitina and isStoryMode then
-       setProperty('pauseArt.visible', false)
-       setProperty('levelInfo.visible', false)
-     end
 
      makeLuaSprite('logo', 'Credits_LeftSide', -260, 0)
      addSubstateObject('logo')
      doTweenX('logo', 'logo', -60, 1.2, 'elasticOut')
 
-     if creditVer then
-       makeAnimatedLuaSprite('logoBl', 'DDLCStart_Screen_AssetsHUD', -160, -40)
-     else
-       makeAnimatedLuaSprite('logoBl', 'DDLCStart_Screen_Assets', -160, -40)
-     end
+     makeAnimatedLuaSprite('logoBl', 'DDLCStart_Screen_Assets', -160, -40)
      scaleObject('logoBl', 0.5, 0.5)
-     addAnimationByPrefix('logoBl', 'bump', 'logo bumpin', 24, true)
+     addByPrefix('logoBl', 'bump', 'logo bumpin', 24, true)
      addSubstateObject('logoBl')
      doTweenX('logoBl', 'logoBl', 40, 1.2, 'elasticOut')
 
      if isAndroid then
         for i = 1, #buttonSprites do
-            createButton(buttonSprites[i], 'Android_Buttons', 0, 0, 0.7, 'substate')
-            showButton('left', false)
-            showButton('right', false)
-            showButton('reset', false)
-            setPosition('upButton', 400, 545)
-            setPosition('downButton', 400, 635)
-            setPosition('leftButton', 590, 635)
-            setPosition('rightButton', 500, 635)
-            setPosition('confirmButton', 750, 635)
-            setPosition('exitButton', 840, 635)
-            setPosition('resetButton', 930, 635)
+           createButton(buttonSprites[i], 'Android_Buttons', 0, 0, 0.7, 'substate')
+           showButton('left', false)
+           showButton('right', false)
+           showButton('reset', false)
+           setPosition('upButton', 400, 545)
+           setPosition('downButton', 400, 635)
+           setPosition('leftButton', 590, 635)
+           setPosition('rightButton', 500, 635)
+           setPosition('confirmButton', 750, 635)
+           setPosition('exitButton', 840, 635)
+           setPosition('resetButton', 930, 635)
         end
      end
 
      regenMenu(pauseOG)
 
-     creditTxt = 'Script By: MCBoy2038 - Ported/Recreation By: Zaxh - Original By: Team TBD (DDTO+)'
-
-     makeLuaText('creditsText', creditTxt, 0, 5, screenHeight - 20)
-     setTextFormat('creditsText', getFont(), 16, getFlxColor('WHITE'), 'left')
+     createObject('text', 'creditsText', {text = getText('credits'), x = 5, y = screenHeight - 20})
+     setTextFormat('creditsText', getFont(), 16, 'FFFFFF', 'left', {1, '000000'})
      setProperty('creditsText.alpha', 0)
      addSubstateObject('creditsText')
      runHaxeCode([[FlxTween.tween(game.getLuaObject('creditsText'), {alpha: 1}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.3});]])
 
-     makeLuaSprite('controlsBG', '', 1070, 215)
-     makeGraphic('controlsBG', 220, 330, '808080')
+     makeLuaText('controlsText', getText('control'), 200, screenWidth - 200, screenHeight - 500)
+     setTextFormat('controlsText', getFont(), 16, getFlxColor('WHITE'), 'left')
+     setProperty('controlsText.alpha', 0)
+
+     createObject('graphic', 'controlsBG', {x = 1070, y = 215, width = 220, height = getProperty('controlsText.height') + 15, color = '808080'})
      setProperty('controlsBG.alpha', 0.5)
      addSubstateObject('controlsBG')
 
-     makeLuaSprite('controlBG', '', getProperty('controlsBG.x') - 30, getProperty('controlsBG.y'))
-     makeGraphic('controlBG', 30, 30, 'FF0000')
-     setProperty('controlBG.alpha', 0.5)
-     addSubstateObject('controlBG')
+     createObject('graphic', 'controlsButton', {x = getProperty('controlsBG.x') - 30, y = getProperty('controlsBG.y'), width = 30, height = 30, color = 'FF0000'})
+     setProperty('controlsButton.alpha', 0.5)
+     addSubstateObject('controlsButton')
 
-     makeLuaText('controlArrow', '>', 0, getProperty('controlBG.x') + 5, getProperty('controlBG.y'))
+     makeLuaText('controlArrow', '>', 0, getProperty('controlsButton.x') + 5, getProperty('controlsButton.y'))
      setTextSize('controlArrow', 28)
      setTextBorder('controlArrow', 2, '000000')
      addSubstateObject('controlArrow')
 
-     controlsTxtAndroid = 'CONTROLS (Android):\n--[BUTTONS]-- \n[Up/Down] Change selection \n[Left] Reduces playback speed/rate (Limit: 0.25) \n[Right] Adds playback speed/rate (Limit: 3) \n[D] Resets playback speed/rate \n[E] Confirm selection \n[V] Toggle Instruction/Control Info \n[X] Go Back/Resume'
-     controlsTxt = 'CONTROLS (PC):\n--[ARROW KEYS]-- \n[Up/Down or '..string.upper(controls.scrollUp)..'/'..string.upper(controls.scrollDown)..'] Change selection \n[CONTROL+Left/'..string.upper(controls.scrollLeft)..'] Reduces playback speed/rate (Limit: 0.25) \n[CONTROL+Right/'..string.upper(controls.scrollRight)..'] Adds playback speed/rate (Limit: 3) \n[CONTROL+R/'..string.upper(controls.reset)..'] Resets playback speed/rate \n[ENTER/'..string.upper(controls.confirm)..'] Confirm selection \n[E/'..string.upper(controls.toggle)..'] Toggle Controls Info \n[ESCAPE/'..string.upper(controls.escape)..'] Go Back/Resume'
-
-     if isAndroid then
-       makeLuaText('controlsText', controlsTxtAndroid, 200, screenWidth - 180, screenHeight - 500)
-     else
-       makeLuaText('controlsText', controlsTxt, 200, screenWidth - 200, screenHeight - 500)
-     end
-     setTextFormat('controlsText', getFont(), 16, getFlxColor('WHITE'), 'left')
-     setProperty('controlsText.alpha', 0)
      addSubstateObject('controlsText')
      runHaxeCode([[FlxTween.tween(game.getLuaObject('controlsText'), {alpha: 1}, 0.4, {ease: FlxEase.quartInOut, startDelay: 0.3});]])
 
@@ -368,15 +343,9 @@ function onCustomSubstateCreate(tag)
        makeLuaSprite('pauseCursor', 'cursor')
        addSubstateObject('pauseCursor')
      end
-
-     setProperty('practiceText.visible', practiceMode)
-     setProperty('botplayText.visible', botPlay)
-     setProperty('speedText.visible', practiceMode)
-     setProperty('chartingText.visible', chartingMode)
    elseif tag == 'DokiPauseSecret' then
       daPath = 'pause/pauseAlt/'
-      makeLuaSprite('pausebg')
-      makeGraphic('pausebg', screenWidth * 3, screenHeight * 3, '000000')
+      createObject('graphic', 'pausebg', {width = screenWidth * 3, height = screenHeight * 3, color = '000000'})
       setProperty('pausebg.alpha', 1)
       addSubstateObject('pausebg')
 
@@ -384,20 +353,20 @@ function onCustomSubstateCreate(tag)
       addSubstateObject('bg')
 
       makeAnimatedLuaSprite('bf', daPath .. 'bfLol', 0, 30)
-      addAnimationByPrefix('bf', 'lol', 'funnyThing', 13)
+      addByPrefix('bf', 'lol', 'funnyThing', 13)
       playAnim('bf', 'lol')
       addSubstateObject('bf')
       screenCenter('bf', 'X')
 
       makeAnimatedLuaSprite('replayButton', daPath .. 'pauseUI', screenWidth * 0.28, screenHeight * 0.7)
-      addAnimationByPrefix('replayButton', 'idle', 'bluereplay', 0, false)
-      addAnimationByPrefix('replayButton', 'selected', 'yellowreplay', 0, false)
+      addByPrefix('replayButton', 'idle', 'bluereplay', 0, false)
+      addByPrefix('replayButton', 'selected', 'yellowreplay', 0, false)
       playAnim('replayButton', 'idle')
       addSubstateObject('replayButton')
 
       makeAnimatedLuaSprite('cancelButton', daPath .. 'pauseUI', screenWidth * 0.58, getProperty('replayButton.y'))
-      addAnimationByPrefix('cancelButton', 'idle', 'bluecancel', 0, false)
-      addAnimationByPrefix('cancelButton', 'selected', 'cancelyellow', 0, false)
+      addByPrefix('cancelButton', 'idle', 'bluecancel', 0, false)
+      addByPrefix('cancelButton', 'selected', 'cancelyellow', 0, false)
       playAnim('cancelButton', 'selected')
       addSubstateObject('cancelButton')
  
@@ -407,6 +376,7 @@ function onCustomSubstateCreate(tag)
 end
 
 local controlShown = true
+
 
 function onCustomSubstateUpdate(tag, elapsed)
    if tag == 'DokiPause' then
@@ -418,7 +388,7 @@ function onCustomSubstateUpdate(tag, elapsed)
        setSoundVolume('pauseMusic', 0.5)
      end
 
-     movingCursor = runHaxeCode('FlxG.mouse.justMoved;')
+     movingCursor = getMouseProperty('justMoved')
 
      runHaxeCode([[
         if (FlxG.sound.music != null) {
@@ -455,15 +425,19 @@ function onCustomSubstateUpdate(tag, elapsed)
         end
      end
 	
-     if getPropertyFromClass('flixel.FlxG', 'mouse.wheel') ~= 0 then
-       changeSelection(-getPropertyFromClass('flixel.FlxG', 'mouse.wheel'))
+     if getMouseProperty('wheel') ~= 0 then
+       changeSelection(-getMouseProperty('wheel'))
      end
 
      daSelection = menuItems[curSelected]
      setProperty('skipTimeText.visible', (daSelection == 'Skip Time'))
+     if isAndroid and currentState == 'debug' then
+       showButtons('practice', (daSelection == 'Skip Time'))
+     end
      switch(daSelection, {
        ['Skip Time'] = function()
-          if keyboardJustPressed('LEFT') then
+          if (isAndroid and mouseReleasedObject('rightButton') or keyboardJustPressed('LEFT')) then
+            playButtonAnim('right', 'pressed')
             playSound('scrollMenu', 0.4)
             curTime = curTime - daMulti
             updateSkipTimeText()
@@ -471,7 +445,8 @@ function onCustomSubstateUpdate(tag, elapsed)
                curTime = getProperty('songLength')
              end
           end
-          if keyboardJustPressed('RIGHT') then
+          if (isAndroid and mouseReleasedObject('leftButton') or keyboardJustPressed('RIGHT')) then
+            playButtonAnim('left', 'pressed')
             playSound('scrollMenu', 0.4)
             curTime = curTime + daMulti
             updateSkipTimeText()
@@ -485,7 +460,8 @@ function onCustomSubstateUpdate(tag, elapsed)
           elseif keyboardJustPressed('L') then
             skipMult = skipMult + 1
             updateSkipTimeText()
-          elseif keyboardJustPressed('R') then
+          elseif (isAndroid and mouseReleasedObject('resetButton') or keyboardJustPressed('R')) then
+            playButtonAnim('reset', 'pressed')
             curTime = getSongPosition()
             skipMult = 1
             updateSkipTimeText()
@@ -496,11 +472,13 @@ function onCustomSubstateUpdate(tag, elapsed)
      for i = 1, #buttonSprites do
         playButtonAnim(buttonSprites[i], 'idle', true)
      end
+
      if isAndroid then
        addControlsAndroid() 
      else
        addControls()
      end
+
     elseif tag == 'DokiPauseSecret' then
       if not selectedSomethin then
         if mouseOverlaps('cancelButton', 'other') then
@@ -533,18 +511,6 @@ function onCustomSubstateUpdate(tag, elapsed)
     end
 end
 
-function showCursor(show)
-   if customCursor then
-     setProperty((getProperty('paused') and 'pauseCursor' or 'gameCursor')..'.visible', show)
-   else
-     setPropertyFromClass('flixel.FlxG', 'mouse.visible', show)
-   end
-end
-
-function mouseJustMoved()
-  return runHaxeCode([[FlxG.mouse.justMoved;]])
-end
-
 function onCustomSubstateDestroy(tag)
    if tag == 'DokiPause' then
      stopSound('pauseMusic')
@@ -557,19 +523,11 @@ function onTimerCompleted(tag)
    end
 end
 
-function onPause()
-   if enablePause then
-     return Function_Stop
+function showCursor(show)
+   if customCursor then
+     setProperty((getProperty('paused') and 'pauseCursor' or 'gameCursor')..'.visible', show)
    else
-     return Function_Continue
-   end
-end
-
-function onPause()
-   if enablePause then
-     return Function_Stop
-   else
-     return Function_Continue
+     setMouseProperty('visible', show)
    end
 end
 
@@ -577,14 +535,14 @@ function tweenControl(type)
    if type:lower() == 'in' then
      setTextString('controlArrow', '>')
      doTweenX('controlsBG', 'controlsBG', 1070, 0.5)
-     doTweenX('controlBG', 'controlBG', 1040, 0.5)
+     doTweenX('controlsButton', 'controlsButton', 1040, 0.5)
      doTweenX('controlArrow', 'controlArrow', 1045, 0.5)
-     doTweenX('controlsText', 'controlsText', screenWidth - (isAndroid and 180 or 200), 0.5)
+     doTweenX('controlsText', 'controlsText', screenWidth - 200, 0.5)
      controlShown = true
    elseif type:lower() == 'out' then
      setTextString('controlArrow', '<')
      doTweenX('controlsBG', 'controlsBG', 1280, 0.5)
-     doTweenX('controlBG', 'controlBG', 1250, 0.5)
+     doTweenX('controlsButton', 'controlsButton', 1250, 0.5)
      doTweenX('controlArrow', 'controlArrow', 1255, 0.5)
      doTweenX('controlsText', 'controlsText', 1280, 0.5)
      controlShown = false
@@ -771,7 +729,6 @@ function addControls()
 end
 
 function addControlsAndroid()
-    --1: UP, 2: DOWN, 3: LEFT, 4: RIGHT, 5: CONFIRM, 6: EXIT, 7: TOGGLE, 8: RESET
    if not selectedSomethin then
      if mouseReleasedObject('upButton') then
        playButtonAnim('up', 'pressed')
@@ -790,7 +747,7 @@ function addControlsAndroid()
        end
 
        if mouseReleasedObject('confirmButton') then
-          playButtonAnim('confirm', 'pressed')
+         playButtonAnim('confirm', 'pressed')
          checkSelected()
        end
 
@@ -803,7 +760,7 @@ function addControlsAndroid()
        end
 
        if mouseReleasedObject('confirmButton') then
-          playButtonAnim('confirm', 'pressed')
+         playButtonAnim('confirm', 'pressed')
          checkSelected()
        end
 
@@ -979,7 +936,16 @@ end
 
 function updatePlaybackText()
    setTextString('speedText', 'Speed: '..playbackRate..'x')
-   setTextString('timeTxt', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(remainingTime())..')')
+   if timeBarType == 'Time Left' then
+     setTextString('timeTxt', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(remainingTime())..')')
+     setTextString('timeProgressTxt', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(remainingTime())..')')
+   elseif timeBarType == 'Song Name' then
+     setTextString('timeTxt', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..difficultyName..')')
+     setTextString('timeProgressTxt', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..difficultyName..')')
+   elseif timeBarType == 'Time Elapsed' then
+     setTextString('timeTxt', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(getSongPosition() - noteOffset)..')')
+     setTextString('timeProgressTxt', songName..(playbackRate ~= 1 and ' ('..playbackRate..'x)' or '')..' ('..formatTime(getSongPosition() - noteOffset)..')')
+   end
 end 
 
 function updateSkipTextStuff()
@@ -1017,7 +983,7 @@ function updateDescription()
         setTextString('creditsText', 'Takes you back in the Selection Menu')
       end,
       ['default'] = function() 
-        setTextString('creditsText', creditTxt)
+        setTextString('creditsText', getText('credit'))
       end
    })
 end
@@ -1033,7 +999,7 @@ function checkSelected()
            ['Skip Time'] = function()
              skipTime(curTime)
              closeCustomSubstate()
-             if isAndroid then showButtons('skip', getProperty('practiceMode')) end
+             if isAndroid then showButtons('practice', getProperty('practiceMode')) end
            end,
            ['Practice Mode'] = function()
              setProperty('practiceMode', not getProperty('practiceMode'))
@@ -1048,7 +1014,7 @@ function checkSelected()
              setProperty('cpuControlled', not getProperty('cpuControlled'))
              setProperty('botplayText.visible', getProperty('cpuControlled'))
              setProperty('botplayTxt.visible', getProperty('cpuControlled'))
-             playSound((getProperty('practiceMode') and 'confirmMenu' or 'cancelMenu'))
+             playSound((getProperty('cpuControlled') and 'confirmMenu' or 'cancelMenu'))
            end,
            ['Leave Debug'] = function()
              setPropertyFromClass('PlayState', 'chartingMode', false)
@@ -1085,7 +1051,7 @@ function checkSelected()
 end
 
 function checkState()
-   local daChoice = menuItems[curSelected]
+   daChoice = menuItems[curSelected]
      switch(daChoice, {
         ['Title'] = function() switchState('TitleState', true) end,
         ['Main Menu'] = function() switchState('MainMenuState', true) end,
@@ -1111,6 +1077,73 @@ function showButtons(type, show)
      showButton('left', show)
      showButton('right', show)
    end
+end
+
+function createObject(type, tag, vars)
+    type = type or ''
+    if type == 'animated' or type == 'anim' then
+      makeAnimatedLuaSprite(tag, vars.image, vars.x, vars.y)
+    elseif type == 'text' then
+      makeLuaText(tag, vars.text, vars.width, vars.x, vars.y)
+      setTextSize(tag, vars.size)
+    elseif type == 'graphic' then
+      makeLuaSprite(tag, nil, vars.x, vars.y)
+      makeGraphic(tag, vars.width, vars.height, vars.color)
+    else
+      makeLuaSprite(tag, vars.img, vars.x, vars.y)
+    end
+end
+
+function addByPrefix(tag, animName, animXML, fps, loop)
+   addAnimationByPrefix(tag, animName, animXML, fps, loop)
+end
+
+function setTextFormat(tag, font, size, color, align, border)
+   color = color or 'FFFFFF'
+   size = size or 8
+   font = font or 'vcr.ttf'
+   setTextFont(tag, font)
+   setTextSize(tag, size)
+   setTextColor(tag, color)
+   setTextAlignment(tag, align)
+   if border ~= nil or border ~= '' then
+     setTextBorder(tag, border[1] or 1, border[2] or 'FFFFFF')
+   end
+end
+
+function getText(type)
+   if type == 'practice' then
+     daText = 'Practice Mode'
+   elseif type == 'botplay' or type == 'bot' then
+     daText = 'Botplay'
+   elseif type == 'songname' or type == 'song' then
+     daText = songName
+   elseif type == 'difficulty' or type == 'diff' then
+     daText = difficultyName
+   elseif type == 'charting' or type == 'chartingMode' or type == 'chart' then
+     daText = 'Charting Mode'
+   elseif type == 'speedControl' or type == 'speedcont' then
+     daText = 'Speed: '..playbackRate..'x (Control + Left/Right)'
+   elseif type == 'speed' or type == 'speedNum' then
+     daText = 'Speed: '..playbackRate..'x'
+   elseif type == 'credits' or type == 'scriptowners' then
+     daText = 'Script By: MCBoy2038 - Ported/Recreation By: Zaxh - Original By: Team TBD (DDTO+)'
+   elseif type == 'controls' or type == 'control' then
+      if isAndroid then
+        daText = 'CONTROLS (Android):\n--[BUTTONS]--\n[Up/Down] Change selection\n[Left] Reduces playback speed/rate (Limit: 0.25)\n[Right] Adds playback speed/rate (Limit: 3)\n[D] Resets playback speed/rate\n[E] Confirm selection\n[X] Go Back/Resume\nOr just literally use the mouse lmao'
+      else
+        daText = 'CONTROLS (PC):\n--[ARROW KEYS]--\n[Up/Down or '..string.upper(controls.scrollUp)..'/'..string.upper(controls.scrollDown)..'] Change selection\n[CONTROL+Left/'..string.upper(controls.scrollLeft)..'] Reduces playback speed/rate (Limit: 0.25)\n[CONTROL+Right/'..string.upper(controls.scrollRight)..'] Adds playback speed/rate (Limit: 3)\n[CONTROL+R/'..string.upper(controls.reset)..'] Resets playback speed/rate\n[ENTER/'..string.upper(controls.confirm)..'] Confirm selection\n[ESCAPE/'..string.upper(controls.escape)..'] Go Back/Resume\nOr just literally use the mouse lmao'
+      end
+   end
+   return daText
+end
+
+function setMouseProperty(prop, val)
+   setPropertyFromClass('flixel.FlxG', 'mouse.'..prop, val)
+end
+
+function getMouseProperty(prop)
+   return getPropertyFromClass('flixel.FlxG', 'mouse.'..prop)
 end
 
 function closeMenu()
@@ -1193,9 +1226,7 @@ function destroy()
        showCursor(true)
        setProperty('gameCursor.visible', true)
      end
-     setProperty('paused', false)
      closeCustomSubstate()
-     startCountdown()
      currentState = ''
 end
 
@@ -1290,8 +1321,7 @@ function precacheStuff()
       'scrollMenu',
       'cancelMenu',
       'confirmMenu',
-      'disco',
-      customPauseSong
+      'disco'
    })
 end
 
@@ -1453,6 +1483,10 @@ function getFont(type)
         else
           font = 'LanaPixel.ttf'
         end
+     else
+       if luaDebugMode then
+         debugPrint('getFont: Font Type: '..type..' Not Found')
+       end
     end
    return font;
 end
@@ -1501,7 +1535,9 @@ function mouseOverlaps(object, camera)
      return true;
    end
    if not checkObject(object) then
-     debugPrint('mouseOverlaps: The object: '..object..' dosent exists')
+     if luaDebugMode then
+       debugPrint('mouseOverlaps: The object: '..object..' dosent exists')
+     end
      return false
    end
 end
@@ -1512,7 +1548,9 @@ function mouseReleasedOnObject(object, camera)
      return true;
    end
    if not checkObject(object) then
-     debugPrint('mouseReleasedOnObject: The object: '..object..' dosent exists')
+     if luaDebugMode then
+       debugPrint('mouseReleasedOnObject: The object: '..object..' dosent exists')
+     end
      return false
    end
 end
@@ -1523,7 +1561,9 @@ function mouseClickedOnObject(object, camera)
      return true;
    end
    if not checkObject(object) then
-     debugPrint('mouseClickedOnObject: The object: '..object..' dosent exists')
+     if luaDebugMode then
+       debugPrint('mouseClickedOnObject: The object: '..object..' dosent exists')
+     end
      return false
    end
 end
@@ -1534,7 +1574,9 @@ function mousePressedOnObject(object, camera)
      return true;
    end
    if not checkObject(object) then
-     debugPrint('mousePressedOnObject: The object: '..object..' dosent exists')
+     if luaDebugMode then
+       debugPrint('mousePressedOnObject: The object: '..object..' dosent exists')
+     end
      return false
    end
 end
@@ -1617,6 +1659,10 @@ function getFlxColor(color)
      color = '0xFFFFFFFF'
    elseif color == 'YELLOW' then
      color = '0xFFFFFF00'
+   else
+      if luaDebugMode then
+        debugPrint('getFlxColor: '..color..' Not Found')
+      end
    end
    return color
 end
@@ -1628,4 +1674,10 @@ end
 
 function remainingTime()
     return getProperty('songLength') - (getSongPosition() - noteOffset)
+end
+
+function onSoundFinished(name)
+  if name == 'pauseMusic' then
+      playSound('../music/disco', 0, 'pauseMusic')
+    end 
 end

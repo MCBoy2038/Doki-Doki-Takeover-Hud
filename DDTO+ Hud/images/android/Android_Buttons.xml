@@ -1,21 +1,19 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <TextureAtlas imagePath="Android_Buttons.png">
-	<!-- Created with Adobe Animate version 22.0.8.217 -->
-	<!-- http://www.adobe.com/products/animate.html -->
-	<SubTexture name="confirm-idle.png" x="0" y="0" width="126" height="124"/>
-	<SubTexture name="confirm-selected.png" x="126" y="0" width="126" height="124"/>
-	<SubTexture name="down-idle.png" x="252" y="0" width="126" height="124"/>
-	<SubTexture name="down-selected.png" x="378" y="0" width="126" height="124"/>
-	<SubTexture name="exit-idle.png" x="0" y="124" width="126" height="124"/>
-	<SubTexture name="exit-selected.png" x="126" y="124" width="126" height="124"/>
-	<SubTexture name="left-idle.png" x="252" y="124" width="126" height="124"/>
-	<SubTexture name="left-selected.png" x="378" y="124" width="127" height="124"/>
-	<SubTexture name="pause-idle.png" x="0" y="248" width="126" height="124"/>
-	<SubTexture name="pause-selected.png" x="126" y="248" width="126" height="124"/>
-	<SubTexture name="reset-idle.png" x="252" y="248" width="126" height="124"/>
-	<SubTexture name="reset-selected.png" x="378" y="248" width="126" height="124"/>
-	<SubTexture name="right-idle.png" x="0" y="372" width="126" height="124"/>
-	<SubTexture name="right-selected.png" x="126" y="372" width="127" height="124"/>
-	<SubTexture name="up-idle.png" x="253" y="372" width="126" height="124"/>
-	<SubTexture name="up-selected.png" x="379" y="372" width="127" height="124"/>
+<SubTexture name="confirm idle0000" x="0" y="0" width="136" height="133" frameX="0" frameY="-1" frameWidth="126" frameHeight="124" />
+<SubTexture name="confirm selected0000" x="136" y="0" width="136" height="125" frameX="0" frameY="-9" frameWidth="126" frameHeight="124" />
+<SubTexture name="down idle0000" x="272" y="0" width="136" height="134" frameX="0" frameY="0" frameWidth="126" frameHeight="124" />
+<SubTexture name="down selected0000" x="0" y="134" width="136" height="125" frameX="0" frameY="-9" frameWidth="126" frameHeight="124" />
+<SubTexture name="exit idle0000" x="136" y="134" width="136" height="133" frameX="0" frameY="-1" frameWidth="126" frameHeight="124" />
+<SubTexture name="exit selected0000" x="272" y="134" width="136" height="125" frameX="0" frameY="-9" frameWidth="126" frameHeight="124" />
+<SubTexture name="right idle0000" x="0" y="267" width="136" height="134" frameX="0" frameY="0" frameWidth="126" frameHeight="124" />
+<SubTexture name="right selected0000" x="136" y="267" width="137" height="125" frameX="0" frameY="-9" frameWidth="127" frameHeight="124" />
+<SubTexture name="pause idle0000" x="273" y="267" width="136" height="133" frameX="0" frameY="-1" frameWidth="126" frameHeight="124" />
+<SubTexture name="pause selected0000" x="0" y="401" width="136" height="125" frameX="0" frameY="-9" frameWidth="126" frameHeight="124" />
+<SubTexture name="reset idle0000" x="136" y="401" width="136" height="133" frameX="0" frameY="-1" frameWidth="126" frameHeight="124" />
+<SubTexture name="reset selected0000" x="272" y="401" width="136" height="125" frameX="0" frameY="-9" frameWidth="126" frameHeight="124" />
+<SubTexture name="left idle0000" x="0" y="534" width="136" height="134" frameX="0" frameY="0" frameWidth="126" frameHeight="124" />
+<SubTexture name="left selected0000" x="136" y="534" width="137" height="125" frameX="0" frameY="-9" frameWidth="127" frameHeight="124" />
+<SubTexture name="up idle0000" x="273" y="534" width="136" height="134" frameX="0" frameY="0" frameWidth="126" frameHeight="124" />
+<SubTexture name="up selected0000" x="0" y="668" width="137" height="125" frameX="0" frameY="-9" frameWidth="127" frameHeight="124" />
 </TextureAtlas>

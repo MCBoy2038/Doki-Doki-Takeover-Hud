@@ -1,26 +1,24 @@
-# Doki Doki Takeover+ Hud
-Hey! Thanks for downloading DDTO+ Hud Script! This script was created by MinecraftBoy2038 with a lot of people that helped me with it! 
+![DDTO+ Hud Script](https://media.discordapp.net/attachments/1091820742775160923/1110053142701293568/Untitled1196_20230521205218.png?width=1202&height=676)
 
-## This script includes
-* Gradient Timebar (by Betopia#5677)
-* NPS by (NF | beihu#6113)
-* Credit Script and Hitsounds in DDTO+
-* Lane Overlay
+## **[GameBanana](https://gamebanana.com/tools/12677)**
 
-## Credits
-* MinecraftBoy2038 - Script Creator
+# Credits
 
-### Contributors
-* Zaxh#9092 - Heavily Modified this script alot (really thank you so much)
-* Betopia#5677 - Gradient Timebar
-* NF | beihu#6113 - NPS
-* Pumpsuki#4681 - Lua Notesplashes
-* Jaldabo#2709 - Helped me alot with the credit script
-* superpowers04#3887 - Literally redid most of the credit script
-* Dsfan2#6218 - Helped with the credit script (he did the icon, i'm so happy)
-* OOF PRODUCTIONS - tried to help lol
-* Nox#5005 - Lane Overlay
-* Aaaron - fixed character selection thing (luv u man!)
+## Script Owners:
+[MCBoy2038](https://mcboy2038.carrd.co/)
+[Zachary0631](https://gamebanana.com/members/2101153)
 
-### Special Thanks
-* [The DDTO+ Team](https://gamebanana.com/mods/47364) - Without them, this script wouldn't exist
+## Contributors: 
+[Betopia](https://betopia.carrd.co/)
+[NF | beihu](https://b23.tv/gxqO0GH)
+[Superpowers04](https://github.com/superpowers04)
+[Dsfan2](https://gamebanana.com/members/1837665)
+[Sentive](https://www.youtube.com/channel/UCTIaOCfQBAnY3vq2nzgYK0Q)
+
+## Special Thanks:
+[Pumpsuki](https://pumpsuki.carrd.co/)
+[Jaldabo](https://gamebanana.com/members/1961867)
+[Voided](https://dreamofvoid.carrd.co/)
+[TailsDoesStuff](https://twitter.com/hexxy16)
+[Team TBD](https://gamebanana.com/studios/36659)
+And You!
