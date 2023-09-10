@@ -2,11 +2,11 @@
 local precacheAssets = true -- Preloads every images used in the scripts [true/false]
 local judgementCounter = false -- Do you want to enable the judgement counter? [true/false]
 local npsEnabled = false -- Do you want to enable NPS? (Notes per second) [true/false]
+local showMS = false -- Do you want to show MS (milliseconds) [true/false]
 local earlyLate = false -- Do you want enable earlyLate counter? [true/false]
 local customFeatures = false -- Do you want enable custom features (exclusive to this script only!) [true/false]
 
 -- OTHER OPTIONS --
-
 local laneUnderlay = false -- Do you want to enable the lane underlay? [true/false]
 local laneTransparency = 0.3 -- Set the underlay on how transparent it is. Max 1
 local mirrorMode = false -- Do you want to play as the opponent? [true/false]
@@ -18,6 +18,8 @@ local hudWatermark = true -- Do you want to enable the HUD's watermark?? [true/f
 local enableCustomPause = true -- Enables the custom pause [true/false]
 local secretPause = true -- Enables a secret pause menu style [true/false]
 local isAndroid = false -- Are you on mobile/phone?? (MUST enable customPause first) [true/false]
+local customCursor = true -- uses ddto's custom cursor [true/false]
+local altLogoIcon = false -- uses an alternate version of logo [true/false]
 
 -- SPLASH OPTIONS --
 local enableSplash = true -- Do you want to enable Splashes? [true/false]
@@ -97,14 +99,16 @@ local judgementString = ''
 function onCreate()
     addHaxeLibrary('Std')
     addHaxeLibrary('Type')
+    addHaxeLibrary('FlxGradient', 'flixel.util')
 
     initSaveData('ddtoOptions')
     addOptions()
 
-    isPixel = getPropertyFromClass('PlayState', 'isPixelStage')
-    globalAntialiasing = getPropertyFromClass('ClientPrefs', 'globalAntialiasing')
-    comboOffset = getPropertyFromClass('ClientPrefs', 'comboOffset')
-    ogRatings = getPropertyFromClass('PlayState', 'ratingStuff')
+    isPixel = getFromClass('PlayState', 'isPixelStage', 'states')
+    globalAntialiasing = getFromClass('ClientPrefs', (version:find('0.7') and 'antialiasing' or 'globalAntialiasing'), 'backend')
+    comboOffset = getFromClass('ClientPrefs', (version:find('0.7') and 'data.' or '')..'comboOffset', 'backend')
+    ratingOffset = getFromClass('ClientPrefs', (version:find('0.7') and 'data.' or '')..'ratingOffset', 'backend')
+    ogRatings = getFromClass('PlayState', 'ratingStuff', 'states')
 
     if autoPause then
       setPropertyFromClass('flixel.FlxG', 'autoPause', false)
@@ -216,6 +220,24 @@ function onCreate()
    setProperty('timeBarBack.alpha', 0)
    addLuaSprite('timeBarBack')
 
+   makeLuaSprite('dokiCursor', 'cursor')
+   setObjectCamera('dokiCursor', 'other')
+
+   if getOptionData('customCursor') then
+     runHaxeCode([[
+       FlxG.mouse.load(game.getLuaObject('dokiCursor').pixels);
+     ]])
+   else
+     runHaxeCode([[FlxG.mouse.unload();]])
+   end
+
+   makeLuaSprite('timeProgress')
+   makeGraphic('timeProgress', getProperty('timeBarBack.width') - 8, getProperty('timeBarBack.height') - 8, 'FF0000')
+   setObjectCamera('timeProgress', 'hud')
+   setProperty('timeProgress.alpha', 0)
+   overlapLuaGradient('timeProgress', {'0xFF000000', '0xFFFFFFFF'}, getProperty('timeProgress.width'), getProperty('timeProgress.height'), 180)
+   addLuaSprite('timeProgress')
+
    makeLuaText('timeProgressTxt', '', 400, 0, 0)
    setTextSize('timeProgressTxt', 18)
    setTextFont('timeProgressTxt', (isPixel and getFont('vcr') or getFont('aller')))
@@ -223,9 +245,24 @@ function onCreate()
    setProperty('timeProgressTxt.alpha', 0)
    setTextBorder('timeProgressTxt', 1.2, '000000')
    addLuaText('timeProgressTxt')
-end
 
+   healthBarPos = (downscroll and 0.11 * screenHeight or screenHeight * 0.89)
+
+   makeLuaText('dokiScoreTxt', 'Test', screenWidth, 0, 0)
+   setTextSize('dokiScoreTxt', 20)
+   setTextFont('dokiScoreTxt', (isPixel and getFont('vcr') or getFont('aller')))
+   setTextBorder('dokiScoreTxt', 1.25, '000000')
+   screenCenter('dokiScoreTxt', 'x')
+   setProperty('dokiScoreTxt.y', healthBarPos + 48)
+   setTextAlignment('dokiScoreTxt', 'center')
+   addLuaText('dokiScoreTxt', true)
+
+   setPosition('timeProgress', getProperty('timeBarBack.x') + 4, getProperty('timeBarBack.y') + 4)
+   setPosition('timeProgressTxt', getProperty('timeBarBack.x'), getProperty('timeBarBack.y'))
+end
+     
 function onCreatePost()
+   debugPrint(getObjectOrder('timeBarBG'))
    for i = 1, #ogRatings do
       table.insert(ratingStuff.default, ogRatings[i])
    end
@@ -233,27 +270,31 @@ function onCreatePost()
    reloadGradientBar()
    runHaxeCode([[
      game.timeBarBG.kill();
+     game.timeBar.kill();
      game.timeTxt.kill();
+     game.scoreTxt.kill();
    ]])
+
+   setObjectOrder('timeBarBack', 23)
+   setObjectOrder('timeProgress', 24)
+   setObjectOrder('timeProgressTxt', 25)
+   setObjectOrder('practiceTxt', 34)
+   setObjectOrder('judgementCounter', 33)
+   setObjectOrder('hudWatermark', 33)
+   setObjectOrder('dokiScoreTxt', 43)
 
    setProperty('practiceTxt.y', getPropertyFromGroup('playerStrums', 0, 'y') + 35)
 
-   setTextFont('scoreTxt', (isPixel and getFont('vcr') or getFont('aller')))
    setTextFont('timeTxt', (isPixel and getFont('vcr') or getFont('aller')))
    setTextFont('botplayTxt', (isPixel and getFont('vcr') or getFont('riffic')))
 
    setTextSize('timeTxt', 18)
    setTextBorder('timeTxt', 1.2, '000000')
    setProperty('timeTxt.y', getProperty('timeBarBack.y'))
-
-   setPosition('timeProgressTxt', getProperty('timeBarBack.x'), getProperty('timeBarBack.y'))
    setPosition('timeBar', getProperty('timeBarBack.x') + 4, getProperty('timeBarBack.y') + 4)
-
-   setObjectOrder('timeBarBack', getObjectOrder('timeBarBG'))
-   setObjectOrder('practiceTxt', getObjectOrder('botplayTxt'))
-   setObjectOrder('judgementCounter', getObjectOrder('scoreTxt'))
-   setObjectOrder('hudWatermark', getObjectOrder('scoreTxt'))
-   setObjectOrder('timeProgressTxt', getObjectOrder('scoreTxt'))
+   runHaxeCode([[
+    game.botplayTxt.font = (PlayState.isPixelStage ? 'vcr.ttf' : 'riffic.ttf');
+    ]])
 end
 
 function onCountdownTick(swagCounter)
@@ -273,12 +314,23 @@ function onSongStart()
    -- 99.9% accurate lmao
    if timeBarType ~= 'Disabled' then
      doTweenAlpha('timeTween', 'timeBarBack', 1, 0.5, 'circOut')
-     doTweenAlpha('timeTween2', 'timeProgressTxt', 1, 0.5, 'circOut')
+     doTweenAlpha('timeTween2', 'timeProgress', 1, 0.5, 'circOut')
+     doTweenAlpha('timeTween3', 'timeProgressTxt', 1, 0.5, 'circOut')
    end
    doTweenAlpha('watermarkTween', 'hudWatermark', 1, 0.5, 'circOut')
 end
 
+function onEvent(name, value1, value2)
+   if name == 'Change Character' then
+     reloadGradientBar()
+   elseif name == 'Change Time Color' then
+     changeGradientBar(value1, value2)
+   end
+end
+
 function onUpdate()
+   timeShit = getSongPosition() / songLength
+   setProperty('timeProgress._frame.frame.width', (math.lerp(0, getProperty('timeProgress.width'), timeShit)))
    if nps > 0 and canDrain then
      canDrain = false
      runTimer('drainTimer', 1 / nps, 1)
@@ -318,6 +370,7 @@ function goodNoteHit(noteID, noteData, noteType, isSustainNote)
    if not isSustainNote then
       if scoreZoom then
         startTextZoom('scoreTxt', 1.075, 1, 0.2)
+        startTextZoom('dokiScoreTxt', 1.075, 1, 0.2)
           if getOptionData('customFeatures') then
             startTextZoom('judgementCounter', 1.075, 1, 0.2)
           end
@@ -341,8 +394,21 @@ function goodNoteHit(noteID, noteData, noteType, isSustainNote)
            botNotes = botNotes + getRatingData(3, 'ratingMod')
          end
       end
+ 
+      if getOptionData('msEnabled') then
+        hideMS()
+         if daRating == 'sick' then
+           ratingColor = 'FF00FF'
+         elseif daRating == 'good' then
+           ratingColor = '00FFFF'
+         else
+           ratingColor = 'FF0000'
+         end
+         popupMS(ratingColor)
+      end
 
       if getOptionData('earlyLate') then
+        hideDelay()
          if daRating ~= 'sick' then
             if noteDiff > 0 then
               popupDelay('late', 'FF0000')
@@ -350,6 +416,8 @@ function goodNoteHit(noteID, noteData, noteType, isSustainNote)
             elseif noteDiff < 0 then
               popupDelay('early', '00FFFF')
               earlys = earlys + 1
+            else
+              popupDelay('exact', 'FFFFFF')
             end
          end
       end
@@ -362,6 +430,7 @@ function noteMiss(noteID, noteData, noteType, isSustainNote)
    if getOptionData('customFeatures') then
      onUpdateScore(true)
      startTextColor('scoreTxt', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
+     startTextColor('dokiScoreTxt', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
      startTextColor('judgementCounter', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
    end
 end
@@ -371,6 +440,7 @@ function noteMissPress(noteID, noteData, noteType, isSustainNote)
    if getOptionData('customFeatures') then
      onUpdateScore(true)
      startTextColor('scoreTxt', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
+     startTextColor('dokiScoreTxt', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
      startTextColor('judgementCounter', 'FF0000', 'FFFFFF', (isSustainNote and 0.1 or 0.25))
    end
 end
@@ -435,6 +505,7 @@ function onUpdateScore(miss)
    finalScore = (getOptionData('npsEnabled') and 'NPS: '..nps..' (Max: '..maxNps..') | ' or '')..'Score: '..scoreString..' | Breaks: '..missString..' | Rating: '..ratingName..' ('..ratingString..'%) - '..(botPlay and 'BOT' or ratingFC)
 
    setProperty('scoreTxt.text', (ratingName ~= '?' and finalScore or beforeScore))
+   setProperty('dokiScoreTxt.text', (ratingName ~= '?' and finalScore or beforeScore))
 
    if getProperty('combo') > maxCombo then
      maxCombo = getProperty('combo')
@@ -458,13 +529,26 @@ end
 function onTimerCompleted(tag, loops, loopsLeft)
    if tag == 'drainTimer' then
      reloadNps()
+   elseif tag == 'delayFade' then
+     doTweenAlpha('delayShown', 'currentTimingShown', 0, 0.2 + (crochet * 0.002))
+   elseif tag == 'msFade' then
+     doTweenAlpha('msShown', 'currentMSShown', 0, 0.2 + (crochet * 0.002))
    end
 end
 
 function onTweenCompleted(tag)
    if tag == 'delayShown' then
      removeLuaText('currentTimingShown')
+   elseif tag == 'msShown' then
+     removeLuaText('currentMSShown')
    end
+end
+
+function overlapLuaGradient(luaObj, colors, width, height, rotation)
+   width = width or getProperty(luaObj..'.width')
+   height = height or getProperty(luaObj..'.height')
+   rotation = rotation or 90
+   runHaxeCode([[FlxGradient.overlayGradientOnFlxSprite(game.getLuaObject(']]..luaObj..[['), ]]..width..[[, ]]..height..[[, []]..colors[1]..[[, ]]..colors[2]..[[], 0, 0, 1, ]]..rotation..[[, true);]])
 end
 
 function reloadNps()
@@ -496,32 +580,64 @@ function startTextColor(daText, daColor, ogColor, duration)
    doTweenColor(daText..'ColorTween', daText, ogColor, duration)
 end
 
-function popupDelay(text, color) 
+function popupDelay(text, color)
+   color = color or 'FFFFFF'
    makeLuaText('currentTimingShown', text:upper(), 0, 0, 0)
    setTextFont('currentTimingShown', (isPixel and getFont('vcr') or getFont('riffic')))
    setTextSize('currentTimingShown', 28)
    setTextBorder('currentTimingShown', 1.5, '000000')
-   screenCenter('currentTimingShown')
-   setTextColor('currentTimingShown', (color == nil and 'FFFFFFF' or color))
-   setProperty('currentTimingShown.x', 405 + comboOffset[1] + 100)
-   setProperty('currentTimingShown.y', 230 - comboOffset[2] + 75)
-   setProperty('currentTimingShown.visible', not hideHud)
    addLuaText('currentTimingShown')
-   doTweenAlpha('delayShown', 'currentTimingShown', 0, 0.2 + (crochet * 0.002))
+   screenCenter('currentTimingShown')
+   setTextColor('currentTimingShown', color)
+   setProperty('currentTimingShown.x', 405 + comboOffset[1] + (isPixel and 140 or 130))
+   setProperty('currentTimingShown.y', 230 - comboOffset[2] + (isPixel and 140 or 75))
+   setProperty('currentTimingShown.visible', not hideHud)
+   runTimer('delayFade', crochet * 0.001 / playbackRate, 1)
+end
+
+function popupMS(color)
+   color = color or 'FFFFFF'
+   makeLuaText('currentMSShown', getMS()..'ms', 0, 0, 0)
+   setTextFont('currentMSShown', (isPixel and getFont('vcr') or getFont('riffic')))
+   setTextSize('currentMSShown', 20)
+   setTextBorder('currentMSShown', 1.5, '000000')
+   addLuaText('currentMSShown')
+   screenCenter('currentMSShown')
+   setTextColor('currentMSShown', color)
+   setProperty('currentMSShown.x', 405 + comboOffset[1] + (isPixel and 155 or 150))
+   setProperty('currentMSShown.y', 230 - comboOffset[2] + (isPixel and 165 or 105))
+   setProperty('currentMSShown.visible', not hideHud)
+   runTimer('msFade', crochet * 0.001 / playbackRate, 1)
+end
+
+function hideDelay()
+   cancelTimer('delayFade')
+   cancelTween('delayShown')
+   setProperty('currentTimingShown.alpha', 0)
+end
+
+function hideMS()
+   cancelTimer('msFade')
+   cancelTween('msShown')
+   setProperty('currentMSShown.alpha', 0)
 end
 
 function changeGradientBar(colorShitDad, colorShitBF)
    reloadGradientColor()
-    if colorShitBF == nil  or colorShitBF:lower() == 'default' then
+    if colorShitBF == nil or colorShitBF:lower() == 'default' then
       reloadGradientBar()
+      overlapLuaGradient('timeProgress', {getHealthColor('boyfriend'), getHealthColor('dad')}, getProperty('timeProgress.width'), getProperty('timeProgress.height'), 180)
     else
+      overlapLuaGradient('timeProgress', {'0xFF'..colorShitBF, getHealthColor('dad')}, getProperty('timeProgress.width'), getProperty('timeProgress.height'), 180)
       runHaxeCode([[
         game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + ']]..colorShitBF..[['), Std.parseInt('0xFF' + dadColor.join(''))]);
       ]])
     end
     if colorShitDad == nil or colorShitDad:lower() == 'default' then
       reloadGradientBar()
+      overlapLuaGradient('timeProgress', {getHealthColor('boyfriend'), getHealthColor('dad')}, getProperty('timeProgress.width'), getProperty('timeProgress.height'), 180)
     else
+      overlapLuaGradient('timeProgress', {getHealthColor('boyfriend'), '0xFF'..color}, getProperty('timeProgress.width'), getProperty('timeProgress.height'), 180)
       runHaxeCode([[
         game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + bfColor.join('')), Std.parseInt('0xFF' + ']]..colorShitDad..[[')]);
       ]])
@@ -530,6 +646,7 @@ end
 
 function reloadGradientBar()
    reloadGradientColor()
+   overlapLuaGradient('timeProgress', {getHealthColor('boyfriend'), getHealthColor('dad')}, getProperty('timeProgress.width'), getProperty('timeProgress.height'), 180)
    runHaxeCode([[
       game.timeBar.createGradientBar([0x0], [Std.parseInt('0xFF' + defaultBfColor.join('')), Std.parseInt('0xFF' + defaultDadColor.join(''))]);
    ]])
@@ -554,11 +671,6 @@ function reloadGradientColor()
    ]])
 end
 
-function addValue(var, value)
-   daVar = var
-   daVar = daVar + value
-end
-
 function addOptions()
     -- put em here
     saveData('ddtoOptions', 'judgementCounter', judgementCounter)
@@ -569,10 +681,13 @@ function addOptions()
     saveData('ddtoOptions', 'mirrorMode', mirrorMode)
     saveData('ddtoOptions', 'gfCountdown', gfCountdown)
     saveData('ddtoOptions', 'npsEnabled', npsEnabled)
+    saveData('ddtoOptions', 'msEnabled', showMS)
     saveData('ddtoOptions', 'earlyLate', earlyLate)
     saveData('ddtoOptions', 'androidBuild', isAndroid)
     saveData('ddtoOptions', 'enablePause', enableCustomPause)
     saveData('ddtoOptions', 'secretPause', secretPause)
+    saveData('ddtoOptions', 'customCursor', customCursor)
+    saveData('ddtoOptions', 'altLogoIcon', altLogoIcon)
     saveData('ddtoOptions', 'enableOpponentSplash', enableOpponentSplash)
     saveData('ddtoOptions', 'enableSplash', enableSplash)
     saveData('ddtoOptions', 'hitSoundVolume', hitSoundVolume)
@@ -589,6 +704,27 @@ end
 
 function setOptionData(var, val)
    saveData('ddtoOptions', var, val)
+end
+
+function getMS()
+   return roundToDecimal(getPropertyFromGroup('notes', membersIndex, 'strumTime') - getSongPosition() + (ratingOffset or 0), 3) or 0
+end
+
+function getFromClass(class, classVar, classGroup)
+   if version:find('0.7') then
+     daClass = getPropertyFromClass(classGroup..'.'..class, classVar)
+   else
+     daClass = getPropertyFromClass(class, classVar)
+   end
+   return daClass
+end
+
+function setFromClass(class, classVar, varVal, classGroup)
+   if version:find('0.7') then
+     setPropertyFromClass(classGroup..'.'..class, classVar, varVal)
+   else
+     setPropertyFromClass(class, classVar, varVal)
+   end
 end
 
 function getFont(type)
@@ -687,16 +823,25 @@ function formatTime(millisecond)
     return string.format("%01d:%02d", (seconds / 60) % 60, seconds % 60)  
 end
 
+function roundToDecimal(number, decimalPlaces)
+    local multiplier = 10 ^ decimalPlaces
+    return math.floor(number * multiplier + 0.5) / multiplier
+end
+
 function remainingTime()
     return getProperty('songLength') - (getSongPosition() - noteOffset)
 end
 
 function getHealthColor(chr)
-   return rgbToHex(getProperty(chr .. ".healthColorArray"))
+   return '0xFF'..rgbToHex(getProperty(chr..'.healthColorArray')):upper()
 end
 
 function rgbToHex(array)
    return string.format('%.2x%.2x%.2x', array[1], array[2], array[3])
+end
+
+function math.lerp(a, b, t)
+   return a + t * (b - a)
 end
 
 function round(x, n) --https://stackoverflow.com/questions/18313171/lua-rounding-numbers-and-then-truncate
@@ -704,6 +849,16 @@ function round(x, n) --https://stackoverflow.com/questions/18313171/lua-rounding
     x = x * n
     if x >= 0 then x = math.floor(x + 0.5) else x = math.ceil(x - 0.5) end
     return x / n
+end
+
+function setMouseCursor(object)
+   if object ~= nil or object ~= '' then
+     runHaxeCode([[FlxG.mouse.load(game.getLuaObject(']]..object..[[').pixels);]])
+   elseif object == 'SYSTEM' or object == 'system' then
+     runHaxeCode('FlxG.mouse.useSystemCursor = true;')
+   else
+     runHaxeCode('FlxG.mouse.unload();')
+   end
 end
 
 function getRating(noteDiff, char)

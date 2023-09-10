@@ -1,8 +1,8 @@
 local pauseStyle = '' -- the pause menu style current values are [libitina/lib & vallhalla]
 local defaultPause = 'fumo' -- the default pause art when there's none specified
 local customCursor = true -- shows the ddto+ cursor instead of the default
-local showCursor = true -- shows cursor (pc only)
-local creditVer = true -- alternate version of the logo
+local showCursor = false -- shows cursor (pc only)
+local creditVer = false -- alternate version of the logo
 
 local pauseOptions = {
     --[[
@@ -12,6 +12,8 @@ local pauseOptions = {
         deathText = 'Blueballed' -- the 'blueballed' text (OPTIONAL)
       }
     ]]
+  ['Bopeebo'] = {art = 'gf'},
+  ['Quadriplegia'] = {art = 'gf'}
 }
 
 --[[
@@ -90,6 +92,8 @@ function onCreate()
    isAndroid = getOptionData('androidBuild')
    enablePause = getOptionData('enablePause')
    allowSecret = getOptionData('secretPause')
+   creditVer = getOptionData('altLogoIcon')
+   customCursor = getOptionData('customCursor')
    precache = getOptionData('precacheAssets')
 
    difficultyLength = getPropertyFromClass('CoolUtil', 'difficulties.length')
@@ -108,7 +112,7 @@ function onCreate()
 
    pauseStuff = pauseOptions[songName]
 
-   hasData = not pauseStuff == nil
+   hasData = pauseStuff ~= nil
 
    if hasData then
      artData = pauseStuff.art or defaultPause
@@ -119,11 +123,10 @@ function onCreate()
    end
 
    if isAndroid then createButton('pause', 'Android_Buttons', 1195, 635, 0.7, true) end
-   if customCursor then
-     makeLuaSprite('gameCursor', 'cursor')
-     setObjectCamera('gameCursor', 'other')
-     setProperty('gameCursor.visible', false)
-     addLuaSprite('gameCursor', true)
+   if isAndroid then
+     showCursor(isAndroid)
+   else
+     showCursor(showCursor)
    end
 
    if precache then
@@ -140,7 +143,6 @@ end
 
 function onCountdownStarted()
    showButton('pause', isAndroid)
-   setProperty('gameCursor.visible', isAndroid)
 end
 
 function onEvent(name, value1, value2)
@@ -154,15 +156,11 @@ end
 function onSongStart()
    if getProperty('skipCountdown') then
      showButton('pause', isAndroid)
-     showCursor(isAndroid)
    end
    table.insert(debugItems, 1, 'Skip Time')
 end
 
 function onUpdate(elapsed)
-   if getProperty('gameCursor.visible') then
-      setPosition('gameCursor', getMouseX('camOTHER'), getMouseY('camOTHER'))
-   end
    if isAndroid then
      playButtonAnim('pause', 'idle')
      if mouseReleasedObject('pauseButton') or androidControlReleased('BACK') and getProperty('startedCountdown') and currentState ~= 'closing' then
@@ -178,6 +176,7 @@ end
 
 function onCustomSubstateCreate(tag)
    if tag == 'DokiPause' then
+     showCursor(true)
      curTime = getSongPosition()
 
      if pauseStyle == 'libitina' then
@@ -277,7 +276,7 @@ function onCustomSubstateCreate(tag)
      addSubstateObject('logo')
      doTweenX('logo', 'logo', -60, 1.2, 'elasticOut')
 
-     makeAnimatedLuaSprite('logoBl', 'DDLCStart_Screen_Assets', -160, -40)
+     makeAnimatedLuaSprite('logoBl', 'DDLCStart_Screen_Assets'..(creditVer and 'HUD' or ''), -160, -40)
      scaleObject('logoBl', 0.5, 0.5)
      addByPrefix('logoBl', 'bump', 'logo bumpin', 24, true)
      addSubstateObject('logoBl')
@@ -338,11 +337,6 @@ function onCustomSubstateCreate(tag)
        loadGraphic('logo', 'Va11Pause')
        setProperty('logo.antialiasing', false)
      end
-
-     if customCursor then
-       makeLuaSprite('pauseCursor', 'cursor')
-       addSubstateObject('pauseCursor')
-     end
    elseif tag == 'DokiPauseSecret' then
       daPath = 'pause/pauseAlt/'
       createObject('graphic', 'pausebg', {width = screenWidth * 3, height = screenHeight * 3, color = '000000'})
@@ -369,9 +363,6 @@ function onCustomSubstateCreate(tag)
       addByPrefix('cancelButton', 'selected', 'cancelyellow', 0, false)
       playAnim('cancelButton', 'selected')
       addSubstateObject('cancelButton')
- 
-      makeLuaSprite('pauseCursor', 'cursor')
-      addSubstateObject('pauseCursor')
     end
 end
 
@@ -380,8 +371,6 @@ local controlShown = true
 
 function onCustomSubstateUpdate(tag, elapsed)
    if tag == 'DokiPause' then
-     setPosition('pauseCursor', getMouseX('camOTHER'), getMouseY('camOTHER'))
-
      if getSoundVolume('pauseMusic') < 0.5 then
        setSoundVolume('pauseMusic', getSoundVolume('pauseMusic') + 0.01 * elapsed)
      elseif getSoundVolume('pauseMusic') > 0.5 then
@@ -523,12 +512,14 @@ function onTimerCompleted(tag)
    end
 end
 
-function showCursor(show)
-   if customCursor then
-     setProperty((getProperty('paused') and 'pauseCursor' or 'gameCursor')..'.visible', show)
-   else
-     setMouseProperty('visible', show)
+function onSoundFinished(tag)
+   if tag == 'pauseMusic' then
+     playSound('/../music/disco', 0, 'pauseMusic')
    end
+end
+
+function showCursor(show)
+   setMouseProperty('visible', show)
 end
 
 function tweenControl(type)
@@ -878,11 +869,6 @@ function regenMenu(source)
         updateSkipTimeText()
       end
    end
-
-   if customCursor then
-     makeLuaSprite('pauseCursor', 'cursor')
-     addSubstateObject('pauseCursor')
-   end
    curSelected = 1
    changeSelection()
 end
@@ -1194,7 +1180,6 @@ function closeMenu()
         doTweenAlpha('creditsText', 'creditsText', 0, 0.6, 'quartInOut')
         doTweenAlpha('controlsText', 'controlsText', 0, 0.6, 'quartInOut')
         doTweenAlpha('skipTimeText', 'skipTimeText', 0, 0.6, 'quartInOut')
-        setProperty('pauseCursor.visible', false)
         pauseSound('pauseMusic')
 
         runTimer('close', 0.6)
@@ -1205,7 +1190,6 @@ function destroy()
      removeSprite('logo')
      removeSprite('logoBl')
      removeSprite('pausebg')
-     removeSprite('pauseCursor')
 
      for i = 1, #menuItems do
         removeLuaText('songText'..i)
@@ -1222,10 +1206,7 @@ function destroy()
      removeText('controlsText')
      removeText('skipTimeText')
      destroySound('pauseMusic')
-     if isAndroid or showCursor then
-       showCursor(true)
-       setProperty('gameCursor.visible', true)
-     end
+     showCursor(showCursor)
      closeCustomSubstate()
      currentState = ''
 end
@@ -1674,10 +1655,4 @@ end
 
 function remainingTime()
     return getProperty('songLength') - (getSongPosition() - noteOffset)
-end
-
-function onSoundFinished(name)
-  if name == 'pauseMusic' then
-      playSound('../music/disco', 0, 'pauseMusic')
-    end 
 end
